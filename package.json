@@ -1,7 +1,7 @@
 {
   "name": "codex-reset-kit",
   "version": "0.1.0",
-  "description": "Safely inspect and redeem Codex earned rate-limit resets through the official App Server protocol.",
+  "description": "List and safely redeem earned Codex rate-limit reset credits by ID or expiration date.",
   "type": "module",
   "engines": {
     "node": ">=22"

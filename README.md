@@ -1,6 +1,6 @@
 # Codex Reset Kit
 
-Safely inspect and redeem ChatGPT earned rate-limit resets for Codex from a small cross-platform CLI or an installable Codex Skill.
+List the earned rate-limit reset credits available to a ChatGPT-backed Codex account, select one by ID or expiration date, and redeem it only after explicit confirmation. Use it as a cross-platform CLI or an installable Codex Skill.
 
 > [!IMPORTANT]
 > Codex Reset Kit is an independent open-source project. It is not affiliated with, endorsed by, or supported by OpenAI.

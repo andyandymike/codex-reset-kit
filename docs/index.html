@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Codex Reset Kit is a safe, open-source CLI and Codex Skill for inspecting and redeeming earned Codex rate-limit resets."
+      content="List earned Codex rate-limit reset credits, select one by expiration date or ID, and redeem it only after explicit confirmation."
     />
     <meta name="theme-color" content="#101513" />
-    <title>Codex Reset Kit</title>
+    <title>Codex Reset Kit — Select and redeem Codex reset credits</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -20,7 +20,7 @@
       </a>
       <nav aria-label="Primary navigation">
         <a href="#quick-start">Quick start</a>
-        <a href="#safety">Safety</a>
+        <a href="#what-it-does">What it does</a>
         <a href="https://github.com/andyandymike/codex-reset-kit">GitHub</a>
       </nav>
     </header>
@@ -28,14 +28,14 @@
     <main id="main">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Open source · MIT licensed</p>
-          <h1>Inspect first.<br /><span>Reset deliberately.</span></h1>
+          <p class="eyebrow">Open-source CLI + Codex Skill</p>
+          <h1>List and redeem <span>Codex reset credits.</span></h1>
           <p class="lede">
-            A small cross-platform CLI and installable Codex Skill for safely inspecting and
-            redeeming earned ChatGPT rate-limit resets for Codex.
+            List the earned rate-limit resets available to your ChatGPT-backed Codex account,
+            choose one by ID or expiration date, and redeem it only after you confirm.
           </p>
           <div class="actions">
-            <a class="button primary" href="#quick-start">Get started</a>
+            <a class="button primary" href="#what-it-does">See what it does</a>
             <a class="button secondary" href="https://github.com/andyandymike/codex-reset-kit">
               View source
             </a>
@@ -45,41 +45,44 @@
           </p>
         </div>
 
-        <div class="terminal" aria-label="Read-only command example">
+        <div class="terminal" aria-label="Select a reset credit by expiration date">
           <div class="terminal-bar">
             <span></span><span></span><span></span>
-            <strong>read-only inspection</strong>
+            <strong>select by expiration date</strong>
           </div>
-          <pre><code><span class="prompt">$</span> codex-reset doctor
-<span class="ok">✓</span> Codex CLI available
-<span class="ok">✓</span> Compatible account detected
+          <pre><code><span class="prompt">$</span> codex-reset list
+Available reset credits: 2
+credit_example_a · expires 2026-08-01
+credit_example_b · expires 2026-08-14
 
-<span class="prompt">$</span> codex-reset list
-Available reset credits: 1
-No reset was consumed.</code></pre>
+<span class="prompt">$</span> codex-reset redeem \
+  --expires-on 2026-08-01 \
+  --timezone Asia/Tokyo
+Target: credit_example_a
+Confirmation required. Nothing consumed yet.</code></pre>
         </div>
       </section>
 
-      <section id="safety" class="section">
+      <section id="what-it-does" class="section">
         <div class="section-heading">
-          <p class="eyebrow">Fail-closed by design</p>
-          <h2>Safety is the product.</h2>
+          <p class="eyebrow">Three explicit steps</p>
+          <h2>See every credit. Pick one. Confirm once.</h2>
         </div>
         <div class="card-grid">
           <article class="card">
             <span class="card-number">01</span>
-            <h3>No token handling</h3>
-            <p>Uses the documented Codex App Server. It never reads auth files, cookies, or raw tokens.</p>
+            <h3>List available credits</h3>
+            <p>Read the count, IDs, and full expiration timestamps without consuming anything.</p>
           </article>
           <article class="card">
             <span class="card-number">02</span>
-            <h3>Explicit confirmation</h3>
-            <p>Read-only inspection is separate from redemption, which requires a precise selector and confirmation.</p>
+            <h3>Choose the exact target</h3>
+            <p>Select by credit ID, earliest expiry, or a calendar date in your own timezone.</p>
           </article>
           <article class="card">
             <span class="card-number">03</span>
-            <h3>Verifiable outcomes</h3>
-            <p>Idempotency keys and distinct proof levels make ambiguous or partial results visible instead of guessing.</p>
+            <h3>Redeem and verify</h3>
+            <p>Confirm before anything is consumed, then get a verified, partial, or unknown result instead of a guess.</p>
           </article>
         </div>
       </section>
