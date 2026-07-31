@@ -47,3 +47,11 @@ export function getPlanType(snapshot: RateLimitSnapshot): string | null {
 
   return null;
 }
+
+export function getReportedPlanTypes(snapshot: RateLimitSnapshot): string[] {
+  const plans = [
+    snapshot.rateLimits?.planType,
+    ...Object.values(snapshot.rateLimitsByLimitId).map((bucket) => bucket.planType),
+  ].filter((plan): plan is string => plan != null);
+  return [...new Set(plans)];
+}

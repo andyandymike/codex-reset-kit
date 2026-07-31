@@ -9,6 +9,9 @@ permissions:
 
 jobs:
   check:
+    timeout-minutes: 20
+    env:
+      CODEX_RESET_KIT_TEST_MODE: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -16,12 +19,22 @@ jobs:
         node: [22, 24]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
-      - run: npm run check
-      - name: Verify committed Skill bundle
-        run: git diff --exit-code -- skills/redeem-codex-reset/scripts/codex-reset.mjs
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Audit high-severity dependency advisories
+        run: npm run audit
+      - name: Run source, protocol, fixture, and Skill checks
+        run: npm run check
+      - name: Smoke-test the packed npm CLI and standalone Skill
+        run: npm run package:smoke
+      - name: Verify committed Skill bundle, license, and notices
+        run: git diff --exit-code -- skills/redeem-codex-reset/scripts/codex-reset.mjs skills/redeem-codex-reset/LICENSE skills/redeem-codex-reset/THIRD_PARTY_NOTICES

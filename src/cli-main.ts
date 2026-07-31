@@ -1,6 +1,11 @@
 import type { CodexAppServerClient } from "./app-server/client.js";
 import { connectAppServer } from "./app-server/client.js";
 import { isAppServerError } from "./app-server/errors.js";
+import {
+  AttemptStoreError,
+  FileRedemptionAttemptStore,
+  type RedemptionAttemptStore,
+} from "./application/attempt-store.js";
 import { runDoctor } from "./application/doctor.js";
 import { runList } from "./application/list.js";
 import {
@@ -10,16 +15,32 @@ import {
   EXIT_CODE,
   fail,
 } from "./application/output.js";
-import { runRedeem } from "./application/redeem.js";
+import {
+  type CommitRedemptionOptions,
+  type RecoverRedemptionOptions,
+  runCommitRedemption,
+  runPrepareRedemption,
+  runRecoverRedemption,
+  runRedeem,
+} from "./application/redeem.js";
 import { CliArgumentError, HELP_TEXT, type ParsedCommand, parseCliArgs } from "./cli-options.js";
 import { renderJson } from "./presentation/json.js";
-import { confirmRedemption, renderTerminal } from "./presentation/terminal.js";
+import {
+  confirmCloseUnknown,
+  confirmPreparedRedemption,
+  confirmRecovery,
+  renderTerminal,
+} from "./presentation/terminal.js";
 import { redactText } from "./security/redact.js";
 
 const VERSION = "0.1.0";
 
 export interface CliDependencies {
   connect?: (command: ParsedCommand) => Promise<CodexAppServerClient>;
+  store?: RedemptionAttemptStore;
+  confirmPrepared?: CommitRedemptionOptions["confirm"];
+  confirmRecovery?: RecoverRedemptionOptions["confirm"];
+  confirmCloseUnknown?: RecoverRedemptionOptions["confirmCloseUnknown"];
   stdout?: Pick<NodeJS.WriteStream, "write">;
   stderr?: Pick<NodeJS.WriteStream, "write">;
 }
@@ -40,19 +61,22 @@ function renderExecution(
   }
 
   const rendered = renderTerminal(execution.envelope, command.common.timeZone);
-  const target = execution.exitCode === 0 ? stdout : stderr;
+  const target = execution.envelope.ok ? stdout : stderr;
   if (rendered.length > 0) {
     target.write(`${rendered}\n`);
   }
 }
 
-function connectionFailure(command: ParsedCommand, error: unknown): CommandExecution {
+function executionFailure(command: ParsedCommand, error: unknown): CommandExecution {
   const envelope = createEnvelope(commandName(command));
   const message = redactText(error instanceof Error ? error.message : String(error));
+  if (error instanceof AttemptStoreError) {
+    return fail(envelope, EXIT_CODE.attempt, `attempt-${error.code}`, message);
+  }
   return fail(
     envelope,
     EXIT_CODE.appServer,
-    isAppServerError(error) ? `app-server-${error.kind}` : "app-server-error",
+    isAppServerError(error) ? `app-server-${error.kind}` : "application-error",
     message,
   );
 }
@@ -68,10 +92,8 @@ export async function runCli(args: string[], dependencies: CliDependencies = {})
     const message = redactText(error instanceof CliArgumentError ? error.message : String(error));
     if (args.includes("--json")) {
       const requested = args[0];
-      const name: CommandName =
-        requested === "list" || requested === "doctor" || requested === "redeem"
-          ? requested
-          : "doctor";
+      const supported = new Set(["list", "doctor", "prepare", "redeem", "commit", "recover"]);
+      const name = (supported.has(requested ?? "") ? requested : "doctor") as CommandName;
       const execution = fail(
         createEnvelope(name),
         EXIT_CODE.arguments,
@@ -90,6 +112,11 @@ export async function runCli(args: string[], dependencies: CliDependencies = {})
     return EXIT_CODE.success;
   }
 
+  const store =
+    dependencies.store ??
+    (command.command === "list" || command.command === "doctor"
+      ? null
+      : new FileRedemptionAttemptStore());
   let client: CodexAppServerClient | null = null;
   try {
     client =
@@ -98,7 +125,12 @@ export async function runCli(args: string[], dependencies: CliDependencies = {})
             command: command.common.codexBin,
             timeoutMs: command.common.timeoutMs,
             clientVersion: VERSION,
-            onDiagnostic: (message) => stderr.write(`[codex app-server] ${message}\n`),
+            ...(command.common.verbose
+              ? {
+                  onDiagnostic: (message: string) =>
+                    stderr.write(`[codex app-server] ${message}\n`),
+                }
+              : {}),
           })
         : await dependencies.connect(command);
 
@@ -107,20 +139,48 @@ export async function runCli(args: string[], dependencies: CliDependencies = {})
       execution = await runList(client);
     } else if (command.command === "doctor") {
       execution = await runDoctor(client);
-    } else {
-      execution = await runRedeem(client, {
+    } else if (command.command === "prepare") {
+      if (store == null) {
+        throw new Error("The prepare command requires a redemption journal store.");
+      }
+      execution = await runPrepareRedemption(client, store, {
         selector: command.selector,
-        ...(command.idempotencyKey === undefined ? {} : { idempotencyKey: command.idempotencyKey }),
-        confirm: command.yes
-          ? async () => true
-          : (selection, before) => confirmRedemption(selection, before, command.common.timeZone),
+        timeZone: command.common.timeZone,
       });
+    } else if (command.command === "redeem") {
+      if (store == null) {
+        throw new Error("The redeem command requires a redemption journal store.");
+      }
+      execution = await runRedeem(client, store, {
+        selector: command.selector,
+        timeZone: command.common.timeZone,
+        confirm: dependencies.confirmPrepared ?? confirmPreparedRedemption,
+      });
+    } else if (command.command === "commit") {
+      if (store == null) {
+        throw new Error("The commit command requires a redemption journal store.");
+      }
+      execution = await runCommitRedemption(client, store, {
+        attemptId: command.attemptId,
+        confirm: dependencies.confirmPrepared ?? confirmPreparedRedemption,
+      });
+    } else if (command.command === "recover") {
+      if (store == null) {
+        throw new Error("The recover command requires a redemption journal store.");
+      }
+      execution = await runRecoverRedemption(client, store, {
+        attemptId: command.attemptId,
+        confirm: dependencies.confirmRecovery ?? confirmRecovery,
+        confirmCloseUnknown: dependencies.confirmCloseUnknown ?? confirmCloseUnknown,
+      });
+    } else {
+      throw new Error(`Unhandled command: ${String(command.command)}`);
     }
 
     renderExecution(execution, command, stdout, stderr);
     return execution.exitCode;
   } catch (error) {
-    const execution = connectionFailure(command, error);
+    const execution = executionFailure(command, error);
     renderExecution(execution, command, stdout, stderr);
     return execution.exitCode;
   } finally {

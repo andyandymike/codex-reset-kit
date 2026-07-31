@@ -1,19 +1,39 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { type CodexAppServerClient, connectAppServer } from "../../src/app-server/client.js";
+import {
+  FileRedemptionAttemptStore,
+  MemoryRedemptionAttemptStore,
+} from "../../src/application/attempt-store.js";
 import { EXIT_CODE } from "../../src/application/output.js";
-import { runRedeem } from "../../src/application/redeem.js";
+import { runRecoverRedemption, runRedeem } from "../../src/application/redeem.js";
+import { OBSERVED_AT_MS } from "../helpers.js";
 
 const fixture = fileURLToPath(new URL("../fixtures/fake-app-server.mjs", import.meta.url));
+const temporaryDirectories: string[] = [];
+
+afterEach(async () => {
+  for (const directory of temporaryDirectories.splice(0)) {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 async function connect(
   scenario: string,
-  options: { timeoutMs?: number; diagnostics?: string[] } = {},
+  options: { timeoutMs?: number; diagnostics?: string[]; ledgerPath?: string } = {},
 ): Promise<CodexAppServerClient> {
   return connectAppServer({
     command: process.execPath,
     args: [fixture],
-    env: { ...process.env, CODEX_RESET_FAKE_SCENARIO: scenario },
+    env: {
+      ...process.env,
+      CODEX_RESET_FAKE_APP_SERVER: "1",
+      CODEX_RESET_FAKE_SCENARIO: scenario,
+      ...(options.ledgerPath == null ? {} : { CODEX_RESET_FAKE_LEDGER: options.ledgerPath }),
+    },
     timeoutMs: options.timeoutMs ?? 2_000,
     clientVersion: "test",
     ...(options.diagnostics == null
@@ -29,6 +49,7 @@ describe("stdio App Server client", () => {
       expect(await client.readAccount()).toEqual({
         type: "chatgpt",
         planType: "plus",
+        email: "never-forward@example.test",
         requiresOpenaiAuth: true,
       });
       const before = await client.readRateLimits();
@@ -64,6 +85,7 @@ describe("stdio App Server client", () => {
       await expect(
         client.consumeResetCredit({
           idempotencyKey: "8ae96ff3-3425-4f4c-8772-b6fd61502868",
+          creditId: "fake-credit-1",
         }),
       ).rejects.toMatchObject({ kind: "timeout", requestSent: true });
     } finally {
@@ -75,11 +97,37 @@ describe("stdio App Server client", () => {
     await expect(connect("init-fail")).rejects.toMatchObject({ kind: "rpc" });
   });
 
+  it("rejects an incompatible initialize response", async () => {
+    await expect(connect("bad-initialize")).rejects.toMatchObject({
+      kind: "protocol",
+      requestSent: true,
+    });
+  });
+
+  it("hard-blocks an unmarked real executable while the test suite is running", async () => {
+    await expect(
+      connectAppServer({ command: "codex", timeoutMs: 1_000, clientVersion: "test" }),
+    ).rejects.toThrow(/Test mode blocked/);
+  });
+
+  it("does not trust the fake marker without the exact fixture process shape", async () => {
+    await expect(
+      connectAppServer({
+        command: process.execPath,
+        args: ["--version"],
+        env: { ...process.env, CODEX_RESET_FAKE_APP_SERVER: "1" },
+        timeoutMs: 1_000,
+        clientVersion: "test",
+      }),
+    ).rejects.toThrow(/Test mode blocked/);
+  });
+
   it("verifies the full redemption flow against the fake process", async () => {
     const client = await connect("happy");
     try {
-      const execution = await runRedeem(client, {
+      const execution = await runRedeem(client, new MemoryRedemptionAttemptStore(), {
         selector: { kind: "id", id: "fake-credit-1" },
+        timeZone: "UTC",
         confirm: async () => true,
         verificationDelaysMs: [],
       });
@@ -93,8 +141,9 @@ describe("stdio App Server client", () => {
   it("uses bounded read-only retries for delayed verification", async () => {
     const client = await connect("delayed");
     try {
-      const execution = await runRedeem(client, {
+      const execution = await runRedeem(client, new MemoryRedemptionAttemptStore(), {
         selector: { kind: "id", id: "fake-credit-1" },
+        timeZone: "UTC",
         confirm: async () => true,
         verificationDelaysMs: [0],
       });
@@ -113,8 +162,9 @@ describe("stdio App Server client", () => {
     async (scenario, exitCode, outcome) => {
       const client = await connect(scenario);
       try {
-        const execution = await runRedeem(client, {
+        const execution = await runRedeem(client, new MemoryRedemptionAttemptStore(), {
           selector: { kind: "id", id: "fake-credit-1" },
+          timeZone: "UTC",
           confirm: async () => true,
           verificationDelaysMs: [],
         });
@@ -130,8 +180,9 @@ describe("stdio App Server client", () => {
   it("does not claim verification when the fake service never updates", async () => {
     const client = await connect("never-update");
     try {
-      const execution = await runRedeem(client, {
+      const execution = await runRedeem(client, new MemoryRedemptionAttemptStore(), {
         selector: { kind: "id", id: "fake-credit-1" },
+        timeZone: "UTC",
         confirm: async () => true,
         verificationDelaysMs: [],
       });
@@ -140,5 +191,86 @@ describe("stdio App Server client", () => {
     } finally {
       client.close();
     }
+  });
+
+  it.each(["rpc-after-consume", "unknown-outcome"])(
+    "treats %s after mutation as uncertain, then proves completion read-only",
+    async (scenario) => {
+      const client = await connect(scenario);
+      try {
+        const execution = await runRedeem(client, new MemoryRedemptionAttemptStore(), {
+          selector: { kind: "id", id: "fake-credit-1" },
+          timeZone: "UTC",
+          confirm: async () => true,
+          verificationDelaysMs: [],
+          now: () => OBSERVED_AT_MS,
+        });
+        expect(execution.exitCode).toBe(0);
+        expect(execution.envelope.redemption?.state).toBe("completed");
+      } finally {
+        client.close();
+      }
+    },
+  );
+
+  it("invalidates preparation when the fake App Server switches accounts", async () => {
+    const client = await connect("account-switch");
+    try {
+      const execution = await runRedeem(client, new MemoryRedemptionAttemptStore(), {
+        selector: { kind: "id", id: "fake-credit-1" },
+        timeZone: "UTC",
+        confirm: async () => true,
+        now: () => OBSERVED_AT_MS,
+      });
+      expect(execution.exitCode).toBe(EXIT_CODE.stale);
+      expect(execution.envelope.error?.code).toBe("prepared-state-changed");
+    } finally {
+      client.close();
+    }
+  });
+
+  it("recovers across processes with the same journaled key and canonical params", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-reset-cross-process-"));
+    temporaryDirectories.push(root);
+    const ledgerPath = path.join(root, "fake-ledger.json");
+    const store = new FileRedemptionAttemptStore(path.join(root, "state"));
+
+    const firstClient = await connect("timeout-never-update", {
+      timeoutMs: 300,
+      ledgerPath,
+    });
+    let first: Awaited<ReturnType<typeof runRedeem>>;
+    try {
+      first = await runRedeem(firstClient, store, {
+        selector: { kind: "id", id: "fake-credit-1" },
+        timeZone: "UTC",
+        confirm: async () => true,
+        verificationDelaysMs: [],
+        now: () => OBSERVED_AT_MS,
+      });
+      expect(first.exitCode).toBe(EXIT_CODE.outcomeUnknown);
+    } finally {
+      firstClient.close();
+    }
+
+    const attemptId = first.envelope.redemption?.attemptId as string;
+    const journaled = await store.read(attemptId);
+    const secondClient = await connect("never-update", { ledgerPath });
+    try {
+      const recovered = await runRecoverRedemption(secondClient, store, {
+        attemptId,
+        confirm: async () => true,
+        verificationDelaysMs: [],
+        now: () => OBSERVED_AT_MS + 1_000,
+      });
+      expect(recovered.envelope.redemption?.state).toBe("completed");
+      expect(recovered.envelope.redemption?.outcome).toBe("alreadyRedeemed");
+    } finally {
+      secondClient.close();
+    }
+
+    const ledger = JSON.parse(await readFile(ledgerPath, "utf8"));
+    expect(Object.keys(ledger)).toEqual([journaled.idempotencyKey]);
+    expect(ledger[journaled.idempotencyKey].params).toContain(journaled.target.id);
   });
 });

@@ -1,9 +1,11 @@
 import { parseArgs } from "node:util";
 import type { CreditSelector } from "./domain/select-credit.js";
 import { validateCalendarDate, validateTimeZone } from "./domain/select-credit.js";
+import { hasControlCharacters } from "./security/redact.js";
 
 export interface CommonCliOptions {
   json: boolean;
+  verbose: boolean;
   codexBin: string;
   timeoutMs: number;
   timeZone: string;
@@ -13,13 +15,8 @@ export type ParsedCommand =
   | { command: "help"; common: CommonCliOptions }
   | { command: "list"; common: CommonCliOptions }
   | { command: "doctor"; common: CommonCliOptions }
-  | {
-      command: "redeem";
-      common: CommonCliOptions;
-      selector: CreditSelector;
-      yes: boolean;
-      idempotencyKey?: string;
-    };
+  | { command: "prepare" | "redeem"; common: CommonCliOptions; selector: CreditSelector }
+  | { command: "commit" | "recover"; common: CommonCliOptions; attemptId: string };
 
 export class CliArgumentError extends Error {
   constructor(message: string) {
@@ -32,16 +29,15 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 interface CliValues {
   json?: boolean;
-  yes?: boolean;
+  verbose?: boolean;
   help?: boolean;
   "credit-id"?: string;
   earliest?: boolean;
   "expires-on"?: string;
   timezone?: string;
-  next?: boolean;
+  attempt?: string;
   "codex-bin"?: string;
   timeout?: string;
-  "idempotency-key"?: string;
 }
 
 function parseTimeout(value: string | undefined): number {
@@ -58,6 +54,31 @@ function parseTimeout(value: string | undefined): number {
   return timeoutMs;
 }
 
+function parseSelector(values: CliValues, timeZone: string): CreditSelector {
+  const selectors: CreditSelector[] = [];
+  if (values["credit-id"] !== undefined) {
+    if (values["credit-id"].length === 0 || hasControlCharacters(values["credit-id"])) {
+      throw new CliArgumentError("--credit-id is empty or contains control characters.");
+    }
+    selectors.push({ kind: "id", id: values["credit-id"] });
+  }
+  if (values.earliest === true) {
+    selectors.push({ kind: "earliest" });
+  }
+  if (values["expires-on"] !== undefined) {
+    if (!validateCalendarDate(values["expires-on"])) {
+      throw new CliArgumentError("--expires-on must be a real date in YYYY-MM-DD form.");
+    }
+    selectors.push({ kind: "expires-on", date: values["expires-on"], timeZone });
+  }
+  if (selectors.length !== 1) {
+    throw new CliArgumentError(
+      "prepare and redeem require exactly one of --credit-id, --earliest, or --expires-on.",
+    );
+  }
+  return selectors[0] as CreditSelector;
+}
+
 export function parseCliArgs(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
@@ -70,16 +91,15 @@ export function parseCliArgs(
       strict: true,
       options: {
         json: { type: "boolean" },
-        yes: { type: "boolean" },
+        verbose: { type: "boolean" },
         help: { type: "boolean", short: "h" },
         "credit-id": { type: "string" },
         earliest: { type: "boolean" },
         "expires-on": { type: "string" },
         timezone: { type: "string" },
-        next: { type: "boolean" },
+        attempt: { type: "string" },
         "codex-bin": { type: "string" },
         timeout: { type: "string" },
-        "idempotency-key": { type: "string" },
       },
     });
   } catch (error) {
@@ -87,12 +107,11 @@ export function parseCliArgs(
   }
 
   const values = parsed.values as CliValues;
-
-  const command = parsed.positionals[0] ?? "help";
+  const command = (parsed.positionals[0] ?? "help") as ParsedCommand["command"];
   if (parsed.positionals.length > 1) {
     throw new CliArgumentError("Only one subcommand is allowed.");
   }
-  if (!new Set(["help", "list", "doctor", "redeem"]).has(command)) {
+  if (!new Set(["help", "list", "doctor", "prepare", "redeem", "commit", "recover"]).has(command)) {
     throw new CliArgumentError(`Unknown command: ${command}.`);
   }
 
@@ -102,6 +121,7 @@ export function parseCliArgs(
   }
   const common: CommonCliOptions = {
     json: values.json ?? false,
+    verbose: values.verbose ?? false,
     codexBin: values["codex-bin"] ?? environment.CODEX_BIN ?? "codex",
     timeoutMs: parseTimeout(values.timeout),
     timeZone,
@@ -110,88 +130,59 @@ export function parseCliArgs(
   if (values.help === true || command === "help") {
     return { command: "help", common };
   }
+
+  const hasSelector =
+    values["credit-id"] !== undefined ||
+    values.earliest === true ||
+    values["expires-on"] !== undefined;
+
   if (command === "list" || command === "doctor") {
-    const hasRedemptionOption =
-      values.yes === true ||
-      values["credit-id"] !== undefined ||
-      values.earliest === true ||
-      values["expires-on"] !== undefined ||
-      values.next === true ||
-      values["idempotency-key"] !== undefined;
-    if (hasRedemptionOption) {
-      throw new CliArgumentError(`Redemption options are not valid for ${command}.`);
+    if (hasSelector || values.attempt !== undefined) {
+      throw new CliArgumentError(`Selection and attempt options are not valid for ${command}.`);
     }
     return { command, common };
   }
 
-  const selectors: CreditSelector[] = [];
-  if (values["credit-id"] !== undefined) {
-    if (values["credit-id"].length === 0) {
-      throw new CliArgumentError("--credit-id cannot be empty.");
+  if (command === "prepare" || command === "redeem") {
+    if (values.attempt !== undefined) {
+      throw new CliArgumentError(`--attempt is not valid for ${command}.`);
     }
-    selectors.push({ kind: "id", id: values["credit-id"] });
-  }
-  if (values.earliest === true) {
-    selectors.push({ kind: "earliest" });
-  }
-  if (values["expires-on"] !== undefined) {
-    if (!validateCalendarDate(values["expires-on"])) {
-      throw new CliArgumentError("--expires-on must be a real date in YYYY-MM-DD form.");
-    }
-    selectors.push({
-      kind: "expires-on",
-      date: values["expires-on"],
-      timeZone,
-    });
-  }
-  if (values.next === true) {
-    selectors.push({ kind: "next" });
-  }
-  if (selectors.length !== 1) {
-    throw new CliArgumentError(
-      "redeem requires exactly one of --credit-id, --earliest, --expires-on, or --next.",
-    );
+    return { command, common, selector: parseSelector(values, timeZone) };
   }
 
-  const idempotencyKey = values["idempotency-key"];
-  if (idempotencyKey !== undefined && !UUID_PATTERN.test(idempotencyKey)) {
-    throw new CliArgumentError("--idempotency-key must be a valid UUID.");
+  if (hasSelector || values.timezone !== undefined) {
+    throw new CliArgumentError(`Selectors and --timezone are not valid for ${command}.`);
   }
-  const selector = selectors[0] as CreditSelector;
-  if (idempotencyKey !== undefined && selector.kind !== "id" && selector.kind !== "next") {
+  if (values.attempt == null || !UUID_PATTERN.test(values.attempt)) {
     throw new CliArgumentError(
-      "Idempotent recovery requires --credit-id with the previously printed ID, or --next if the original request used --next.",
+      `${command} requires --attempt with a valid journaled attempt UUID.`,
     );
   }
-
-  return {
-    command: "redeem",
-    common,
-    selector,
-    yes: values.yes ?? false,
-    ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-  };
+  return { command, common, attemptId: values.attempt };
 }
 
 export const HELP_TEXT = `Codex Reset Kit
 
-Safely inspect and redeem earned Codex rate-limit resets.
+Inspect earned Codex reset credits and redeem one through a bound local confirmation.
 
 Usage:
   codex-reset list [--json]
   codex-reset doctor [--json]
-  codex-reset redeem --credit-id <id> [--yes] [--json]
-  codex-reset redeem --earliest [--yes] [--json]
-  codex-reset redeem --expires-on <YYYY-MM-DD> [--timezone <iana>] [--yes] [--json]
-  codex-reset redeem --next [--yes] [--json]
+  codex-reset prepare --credit-id <id> [--json]
+  codex-reset prepare --earliest [--json]
+  codex-reset prepare --expires-on <YYYY-MM-DD> [--timezone <iana>] [--json]
+  codex-reset redeem <same selector options>
+  codex-reset commit --attempt <uuid>
+  codex-reset recover --attempt <uuid>
 
 Common options:
-  --codex-bin <path>        Codex executable (or set CODEX_BIN)
-  --timeout <ms>            Request timeout, 1000-120000 (default: 15000)
-  --json                    Print a stable JSON envelope
-  --idempotency-key <uuid>  Resume the same logical redemption attempt
+  --codex-bin <path>  Codex executable (or set CODEX_BIN)
+  --timeout <ms>      Request timeout, 1000-120000 (default: 15000)
+  --json              Print a stable JSON envelope
+  --verbose           Print sanitized App Server diagnostics to stderr
 
 Safety:
-  list and doctor never consume a reset. redeem requires one explicit selector and
-  interactive confirmation; --yes is only for a caller that already obtained explicit consent.
+  list, doctor, and prepare never consume a reset. commit, redeem, and recover require
+  a local interactive terminal. There is no --yes option and no caller-supplied idempotency key.
+  An old unknown attempt can be closed only by a separate local phrase after replay expires.
 `;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactText, redactUnknown } from "../../src/security/redact.js";
+import { redactText, redactUnknown, safeTerminalField } from "../../src/security/redact.js";
 
 describe("redaction", () => {
   it("redacts common token forms in diagnostics", () => {
@@ -11,10 +11,18 @@ describe("redaction", () => {
     expect(text).toContain("[REDACTED");
   });
 
-  it("redacts sensitive fields but preserves idempotency keys", () => {
-    expect(redactUnknown({ accessToken: "secret", idempotencyKey: "safe-to-return" })).toEqual({
+  it("redacts sensitive fields", () => {
+    expect(redactUnknown({ accessToken: "secret", publicValue: "safe-to-return" })).toEqual({
       accessToken: "[REDACTED]",
-      idempotencyKey: "safe-to-return",
+      publicValue: "safe-to-return",
     });
+  });
+
+  it("neutralizes terminal control sequences and line injection", () => {
+    const value = safeTerminalField("credit\u001b[2J\u202eflip\nFORGED");
+    expect(value).not.toContain("\u001b");
+    expect(value).not.toContain("\u202e");
+    expect(value).not.toContain("\n");
+    expect(value).toContain("FORGED");
   });
 });

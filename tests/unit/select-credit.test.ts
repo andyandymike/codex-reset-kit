@@ -61,25 +61,37 @@ describe("selectCredit", () => {
     expect(selected.creditId).toBe("utc-midnight");
   });
 
-  it("allows only explicit service selection when details cannot prove a date", () => {
-    const selected = selectCredit(snapshot({ availableCount: 2, credits: null }), {
-      kind: "next",
-    });
-    expect(selected.creditId).toBeNull();
-    expect(selected.warnings[0]).toContain("cannot prove");
-  });
-
-  it("reports no credit instead of asking the service to choose", () => {
-    expect(() =>
-      selectCredit(snapshot({ availableCount: 0, credits: [] }), { kind: "next" }),
-    ).toThrowError(/No earned reset credits/);
-  });
-
   it("ignores unavailable detail rows", () => {
     const credits = [
       resetCredit("used", AUGUST_1_2026_UTC, "redeemed"),
       resetCredit("available", AUGUST_2_2026_UTC),
     ];
-    expect(selectCredit(snapshot({ credits }), { kind: "earliest" }).creditId).toBe("available");
+    expect(
+      selectCredit(snapshot({ availableCount: 1, credits }), { kind: "earliest" }).creditId,
+    ).toBe("available");
+  });
+
+  it("does not let historical rows disguise a missing available credit", () => {
+    const credits = [
+      resetCredit("used", AUGUST_1_2026_UTC, "redeemed"),
+      resetCredit("known", AUGUST_2_2026_UTC),
+    ];
+    expect(() =>
+      selectCredit(snapshot({ availableCount: 2, credits }), { kind: "earliest" }),
+    ).toThrowError(/Complete reset-credit details are unavailable/);
+  });
+
+  it("fails closed on duplicate IDs and unsupported available reset types", () => {
+    const duplicate = resetCredit("same", AUGUST_1_2026_UTC);
+    expect(() =>
+      selectCredit(snapshot({ availableCount: 2, credits: [duplicate, duplicate] }), {
+        kind: "earliest",
+      }),
+    ).toThrowError(/Complete reset-credit details are unavailable/);
+
+    const unsupported = { ...resetCredit("other", AUGUST_1_2026_UTC), resetType: "futureType" };
+    expect(() =>
+      selectCredit(snapshot({ availableCount: 1, credits: [unsupported] }), { kind: "earliest" }),
+    ).toThrowError(/Complete reset-credit details are unavailable/);
   });
 });

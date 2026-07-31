@@ -1,7 +1,9 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface, type Interface as ReadlineInterface } from "node:readline";
-import { redactText } from "../security/redact.js";
+import { redactText, safeTerminalField } from "../security/redact.js";
 import { AppServerError } from "./errors.js";
+
+const MAX_PROTOCOL_LINE_CHARACTERS = 4 * 1_024 * 1_024;
 
 type RpcId = number | string;
 
@@ -41,6 +43,7 @@ export class JsonlTransport {
   readonly #pending = new Map<RpcId, PendingRequest>();
   #nextId = 0;
   #closed = false;
+  #exitDescription: string | null = null;
 
   constructor(child: ChildProcessWithoutNullStreams, options: JsonlTransportOptions) {
     this.#child = child;
@@ -56,10 +59,20 @@ export class JsonlTransport {
     child.once("error", (error) => {
       this.#failAll("spawn", `App Server process error: ${redactText(error.message)}`);
     });
-    child.once("exit", (code, signal) => {
+    child.stdin.on("error", (error) => {
       if (!this.#closed) {
-        const suffix = signal == null ? `code ${String(code)}` : `signal ${signal}`;
-        this.#failAll("closed", `App Server exited with ${suffix}.`);
+        this.#failAll("closed", `App Server stdin failed: ${redactText(error.message)}`);
+      }
+    });
+    child.once("exit", (code, signal) => {
+      this.#exitDescription = signal == null ? `code ${String(code)}` : `signal ${signal}`;
+    });
+    child.once("close", () => {
+      if (!this.#closed) {
+        this.#failAll(
+          "closed",
+          `App Server closed${this.#exitDescription == null ? "" : ` with ${this.#exitDescription}`}.`,
+        );
       }
     });
   }
@@ -131,11 +144,33 @@ export class JsonlTransport {
     });
   }
 
-  notify(method: string, params: unknown = {}): void {
+  async notify(method: string, params: unknown = {}): Promise<void> {
     if (this.#closed) {
       throw new AppServerError("closed", "App Server transport is closed.");
     }
-    this.#child.stdin.write(`${JSON.stringify({ method, params })}\n`);
+    await new Promise<void>((resolve, reject) => {
+      try {
+        this.#child.stdin.write(`${JSON.stringify({ method, params })}\n`, (error) => {
+          if (error == null) {
+            resolve();
+          } else {
+            reject(
+              new AppServerError("closed", `Could not write ${method} to App Server.`, {
+                requestSent: true,
+                cause: error,
+              }),
+            );
+          }
+        });
+      } catch (error) {
+        reject(
+          new AppServerError("closed", `Could not write ${method} to App Server.`, {
+            requestSent: false,
+            cause: error,
+          }),
+        );
+      }
+    });
   }
 
   close(): void {
@@ -150,15 +185,28 @@ export class JsonlTransport {
     if (this.#child.exitCode == null && this.#child.signalCode == null) {
       const killTimer = setTimeout(() => {
         if (this.#child.exitCode == null && this.#child.signalCode == null) {
-          this.#child.kill();
+          this.#child.kill("SIGTERM");
         }
       }, 500);
       killTimer.unref();
-      this.#child.once("exit", () => clearTimeout(killTimer));
+      const forceTimer = setTimeout(() => {
+        if (this.#child.exitCode == null && this.#child.signalCode == null) {
+          this.#child.kill("SIGKILL");
+        }
+      }, 1_500);
+      forceTimer.unref();
+      this.#child.once("exit", () => {
+        clearTimeout(killTimer);
+        clearTimeout(forceTimer);
+      });
     }
   }
 
   #handleLine(line: string): void {
+    if (line.length > MAX_PROTOCOL_LINE_CHARACTERS) {
+      this.#diagnostic("Ignored an oversized App Server protocol line.");
+      return;
+    }
     let message: unknown;
     try {
       message = JSON.parse(line);
@@ -220,7 +268,11 @@ export class JsonlTransport {
       error: { code: -32601, message: `Client does not support server request ${method}.` },
     };
     try {
-      this.#child.stdin.write(`${JSON.stringify(response)}\n`);
+      this.#child.stdin.write(`${JSON.stringify(response)}\n`, (error) => {
+        if (error != null) {
+          this.#failAll("closed", "Could not respond to an App Server request.");
+        }
+      });
     } catch {
       this.#failAll("closed", "Could not respond to an App Server request.");
     }
@@ -228,7 +280,7 @@ export class JsonlTransport {
 
   #diagnostic(message: string): void {
     try {
-      this.#onDiagnostic(redactText(message));
+      this.#onDiagnostic(safeTerminalField(message, 4_096));
     } catch {
       // A diagnostic sink must never break protocol processing.
     }

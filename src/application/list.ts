@@ -1,6 +1,6 @@
 import type { CodexAppServerClient } from "../app-server/client.js";
 import { getPlanType } from "../domain/rate-limit.js";
-import { compatibleAccountError } from "./account.js";
+import { compatibleAccountError, publicAccountFingerprint } from "./account.js";
 import {
   applySnapshot,
   type CommandExecution,
@@ -15,13 +15,17 @@ export async function runList(client: CodexAppServerClient): Promise<CommandExec
   const envelope = createEnvelope("list");
   const account = await client.readAccount();
   const accountError = compatibleAccountError(account);
-  envelope.account = publicAccount(account, null);
+  envelope.account = publicAccount(account, null, publicAccountFingerprint(account));
   if (accountError != null) {
     return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
   }
 
   const snapshot = await client.readRateLimits();
-  envelope.account = publicAccount(account, getPlanType(snapshot));
+  envelope.account = publicAccount(
+    account,
+    getPlanType(snapshot),
+    publicAccountFingerprint(account),
+  );
   applySnapshot(envelope, snapshot);
 
   if (!snapshot.resetCredits.serviceReported) {
@@ -33,6 +37,10 @@ export async function runList(client: CodexAppServerClient): Promise<CommandExec
   } else if (snapshot.resetCredits.detailsState === "partial") {
     envelope.warnings.push(
       "The service returned fewer detail rows than the available count; the list is partial.",
+    );
+  } else if (snapshot.resetCredits.detailsState === "inconsistent") {
+    envelope.warnings.push(
+      "Reset-credit details conflict with the authoritative count or contain unsupported values; redemption is disabled.",
     );
   }
 

@@ -2,6 +2,14 @@
   "name": "codex-reset-kit",
   "version": "0.1.0",
   "description": "List and safely redeem earned Codex rate-limit reset credits by ID or expiration date.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andyandymike/codex-reset-kit.git"
+  },
+  "homepage": "https://andyandymike.github.io/codex-reset-kit/",
+  "bugs": {
+    "url": "https://github.com/andyandymike/codex-reset-kit/security/advisories/new"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -20,6 +28,7 @@
     "dist/",
     "skills/redeem-codex-reset/",
     "LICENSE",
+    "THIRD_PARTY_NOTICES",
     "README.md",
     "SECURITY.md"
   ],
@@ -30,7 +39,9 @@
     "format": "biome format --write src tests scripts bin package.json tsconfig.json tsconfig.build.json vitest.config.ts biome.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "audit": "npm audit --audit-level=high",
     "validate:skill": "node scripts/validate-skill.mjs",
+    "package:smoke": "node scripts/package-smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:skill",
     "prepack": "npm run check"
   },
@@ -41,15 +52,14 @@
     "cli",
     "skill"
   ],
-  "author": "",
   "license": "MIT",
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
   "dependencies": {
-    "cross-spawn": "^7.0.6",
-    "zod": "^4.4.3"
+    "cross-spawn": "7.0.6",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.6",

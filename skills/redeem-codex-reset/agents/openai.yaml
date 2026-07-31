@@ -1,4 +1,7 @@
 interface:
-  display_name: "Redeem Codex Reset"
-  short_description: "Safely inspect and redeem Codex reset credits"
-  default_prompt: "Use $redeem-codex-reset to inspect my reset credits and redeem one only after explicit confirmation."
+  display_name: "Codex Reset Inspector"
+  short_description: "Inspect credits and prepare a local confirmation"
+  default_prompt: "Use $redeem-codex-reset to inspect my reset credits and prepare a deliberate local redemption."
+
+policy:
+  allow_implicit_invocation: false

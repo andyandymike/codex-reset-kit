@@ -1,5 +1,6 @@
 import type { AccountSnapshot } from "../app-server/schemas.js";
 import type { RateLimitBucket, RateLimitSnapshot } from "../domain/rate-limit.js";
+import type { RedemptionAttemptState } from "../domain/redemption-attempt.js";
 import type { ResetCredit, ResetCreditDetailsState } from "../domain/reset-credit.js";
 import type { CreditSelector } from "../domain/select-credit.js";
 import type { VerificationResult, VerificationStatus } from "../domain/verification.js";
@@ -12,17 +13,22 @@ export const EXIT_CODE = {
   noCredit: 5,
   nothingToReset: 6,
   cancelled: 7,
+  stale: 8,
+  attempt: 9,
   rejected: 10,
   verificationIncomplete: 11,
   outcomeUnknown: 12,
+  unknownClosed: 13,
+  journalIncomplete: 14,
   appServer: 20,
 } as const;
 
-export type CommandName = "list" | "doctor" | "redeem";
+export type CommandName = "list" | "doctor" | "prepare" | "redeem" | "commit" | "recover";
 
 export interface PublicAccount {
   type: string | null;
   planType: string | null;
+  fingerprint: string | null;
 }
 
 export interface PublicRateLimits {
@@ -30,10 +36,18 @@ export interface PublicRateLimits {
   byLimitId: Record<string, RateLimitBucket>;
 }
 
+export interface PublicResetCredit {
+  id: string;
+  resetType: string | null;
+  status: string;
+  grantedAt: number | null;
+  expiresAt: number | null;
+}
+
 export interface PublicResetCredits {
   availableCount: number;
   detailsState: ResetCreditDetailsState;
-  credits: ResetCredit[];
+  credits: PublicResetCredit[];
 }
 
 export interface PublicSnapshot {
@@ -42,17 +56,19 @@ export interface PublicSnapshot {
 }
 
 export interface RedemptionOutput {
+  attemptId: string;
+  state: RedemptionAttemptState;
   requestedSelector: CreditSelector;
-  creditId: string | null;
-  selectedCredit: ResetCredit | null;
-  idempotencyKey: string | null;
+  creditId: string;
+  selectedCredit: PublicResetCredit;
+  timeZone: string;
+  confirmationExpiresAt: number;
   outcome: string | null;
+  recoveryCommand: string | null;
 }
 
 export interface VerificationOutput extends VerificationResult {
   status: VerificationStatus;
-  before: PublicSnapshot;
-  after: PublicSnapshot | null;
 }
 
 export interface DiagnosticCheck {
@@ -64,11 +80,11 @@ export interface DiagnosticCheck {
 export interface CommandError {
   code: string;
   message: string;
-  candidates: ResetCredit[];
+  candidates: PublicResetCredit[];
 }
 
 export interface CommandEnvelope {
-  schemaVersion: 1;
+  schemaVersion: 2;
   command: CommandName;
   ok: boolean;
   account: PublicAccount | null;
@@ -86,9 +102,19 @@ export interface CommandExecution {
   envelope: CommandEnvelope;
 }
 
+export function publicCredit(credit: ResetCredit): PublicResetCredit {
+  return {
+    id: credit.id,
+    resetType: credit.resetType,
+    status: credit.status,
+    grantedAt: credit.grantedAt,
+    expiresAt: credit.expiresAt,
+  };
+}
+
 export function createEnvelope(command: CommandName): CommandEnvelope {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     command,
     ok: false,
     account: null,
@@ -105,14 +131,19 @@ export function createEnvelope(command: CommandName): CommandEnvelope {
 export function publicAccount(
   account: AccountSnapshot,
   fallbackPlanType: string | null,
+  fingerprint: string | null = null,
 ): PublicAccount {
   return {
     type: account.type,
     planType: account.planType ?? fallbackPlanType,
+    fingerprint,
   };
 }
 
-export function publicSnapshot(snapshot: RateLimitSnapshot): PublicSnapshot {
+export function publicSnapshot(
+  snapshot: RateLimitSnapshot,
+  options: { includeCredits?: boolean } = {},
+): PublicSnapshot {
   return {
     rateLimits: {
       current: snapshot.rateLimits,
@@ -121,13 +152,18 @@ export function publicSnapshot(snapshot: RateLimitSnapshot): PublicSnapshot {
     resetCredits: {
       availableCount: snapshot.resetCredits.availableCount,
       detailsState: snapshot.resetCredits.detailsState,
-      credits: snapshot.resetCredits.credits,
+      credits:
+        options.includeCredits === false ? [] : snapshot.resetCredits.credits.map(publicCredit),
     },
   };
 }
 
-export function applySnapshot(envelope: CommandEnvelope, snapshot: RateLimitSnapshot): void {
-  const view = publicSnapshot(snapshot);
+export function applySnapshot(
+  envelope: CommandEnvelope,
+  snapshot: RateLimitSnapshot,
+  options: { includeCredits?: boolean } = {},
+): void {
+  const view = publicSnapshot(snapshot, options);
   envelope.rateLimits = view.rateLimits;
   envelope.resetCredits = view.resetCredits;
 }
@@ -138,6 +174,15 @@ export function succeed(envelope: CommandEnvelope): CommandExecution {
   return { exitCode: EXIT_CODE.success, envelope };
 }
 
+export function completeWithWarning(
+  envelope: CommandEnvelope,
+  exitCode: number = EXIT_CODE.verificationIncomplete,
+): CommandExecution {
+  envelope.ok = true;
+  envelope.error = null;
+  return { exitCode, envelope };
+}
+
 export function fail(
   envelope: CommandEnvelope,
   exitCode: number,
@@ -146,6 +191,6 @@ export function fail(
   candidates: ResetCredit[] = [],
 ): CommandExecution {
   envelope.ok = false;
-  envelope.error = { code, message, candidates };
+  envelope.error = { code, message, candidates: candidates.map(publicCredit) };
   return { exitCode, envelope };
 }

@@ -4,8 +4,7 @@ import { isAvailableCredit, type ResetCredit } from "./reset-credit.js";
 export type CreditSelector =
   | { kind: "id"; id: string }
   | { kind: "earliest" }
-  | { kind: "expires-on"; date: string; timeZone: string }
-  | { kind: "next" };
+  | { kind: "expires-on"; date: string; timeZone: string };
 
 export type CreditSelectionErrorCode =
   | "no-credit"
@@ -95,27 +94,6 @@ export function selectCredit(
   snapshot: RateLimitSnapshot,
   selector: CreditSelector,
 ): SelectedCredit {
-  if (selector.kind === "next") {
-    if (!snapshot.resetCredits.serviceReported) {
-      throw new CreditSelectionError(
-        "details-unavailable",
-        "The service did not report reset-credit availability.",
-      );
-    }
-    if (snapshot.resetCredits.availableCount === 0) {
-      throw new CreditSelectionError("no-credit", "No earned reset credits are available.");
-    }
-
-    return {
-      selector,
-      creditId: null,
-      credit: null,
-      warnings: [
-        "The service will choose the credit; this client cannot prove which expiration date will be used.",
-      ],
-    };
-  }
-
   const credits = requireCompleteDetails(snapshot);
   const available = credits.filter(isAvailableCredit);
 

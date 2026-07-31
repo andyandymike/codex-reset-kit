@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="List earned Codex rate-limit reset credits, select one by expiration date or ID, and redeem it only after explicit confirmation."
+      content="Inspect earned Codex rate-limit reset credits, bind one exact target, and redeem it only after a fresh local terminal confirmation."
     />
     <meta name="theme-color" content="#101513" />
-    <title>Codex Reset Kit — Select and redeem Codex reset credits</title>
+    <title>Codex Reset Kit — Inspect and deliberately redeem reset credits</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -28,11 +28,11 @@
     <main id="main">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Open-source CLI + Codex Skill</p>
-          <h1>List and redeem <span>Codex reset credits.</span></h1>
+          <p class="eyebrow">Open-source CLI + inspection Skill</p>
+          <h1>Use the right reset credit. <span>Deliberately.</span></h1>
           <p class="lede">
-            List the earned rate-limit resets available to your ChatGPT-backed Codex account,
-            choose one by ID or expiration date, and redeem it only after you confirm.
+            Inspect earned Codex rate-limit resets, bind one exact card and account to a durable
+            intent, then redeem it only after you confirm the fresh snapshot in your own terminal.
           </p>
           <div class="actions">
             <a class="button primary" href="#what-it-does">See what it does</a>
@@ -55,24 +55,26 @@ Available reset credits: 2
 credit_example_a · expires 2026-08-01
 credit_example_b · expires 2026-08-14
 
-<span class="prompt">$</span> codex-reset redeem \
+<span class="prompt">$</span> codex-reset prepare \
   --expires-on 2026-08-01 \
   --timezone Asia/Tokyo
+Attempt: 8ae96ff3-...
 Target: credit_example_a
-Confirmation required. Nothing consumed yet.</code></pre>
+Confirmation deadline: within five minutes or before target expiry
+Nothing consumed. Commit requires a local TTY.</code></pre>
         </div>
       </section>
 
       <section id="what-it-does" class="section">
         <div class="section-heading">
           <p class="eyebrow">Three explicit steps</p>
-          <h2>See every credit. Pick one. Confirm once.</h2>
+          <h2>Inspect the count. Bind one target. Confirm locally.</h2>
         </div>
         <div class="card-grid">
           <article class="card">
             <span class="card-number">01</span>
             <h3>List available credits</h3>
-            <p>Read the count, IDs, and full expiration timestamps without consuming anything.</p>
+            <p>Read the authoritative count and whatever supported detail rows the service makes available.</p>
           </article>
           <article class="card">
             <span class="card-number">02</span>
@@ -82,7 +84,7 @@ Confirmation required. Nothing consumed yet.</code></pre>
           <article class="card">
             <span class="card-number">03</span>
             <h3>Redeem and verify</h3>
-            <p>Confirm before anything is consumed, then get a verified, partial, or unknown result instead of a guess.</p>
+            <p>Use an attempt-specific local terminal phrase, then get exact, partial, or unknown evidence instead of a guess.</p>
           </article>
         </div>
       </section>
@@ -100,23 +102,26 @@ Confirmation required. Nothing consumed yet.</code></pre>
           <article class="step">
             <span>1</span>
             <div>
-              <h3>Install</h3>
-              <pre><code>npm install --global codex-reset-kit</code></pre>
+              <h3>Build from source</h3>
+              <pre><code>npm ci --ignore-scripts
+npm run check</code></pre>
+              <p>The npm package is not published yet.</p>
             </div>
           </article>
           <article class="step">
             <span>2</span>
             <div>
               <h3>Inspect without consuming</h3>
-              <pre><code>codex-reset doctor
-codex-reset list --json</code></pre>
+              <pre><code>node bin/codex-reset.js doctor
+node bin/codex-reset.js list --json</code></pre>
             </div>
           </article>
           <article class="step">
             <span>3</span>
             <div>
-              <h3>Redeem only when intended</h3>
-              <pre><code>codex-reset redeem --credit-id &lt;opaque-id&gt;</code></pre>
+              <h3>Redeem only in your terminal</h3>
+              <pre><code>node bin/codex-reset.js redeem \
+  --credit-id &lt;opaque-id&gt;</code></pre>
             </div>
           </article>
         </div>
@@ -127,8 +132,8 @@ codex-reset list --json</code></pre>
           <p class="eyebrow">Open development</p>
           <h2>Tested without touching a real account.</h2>
           <p>
-            The automated suite uses a fake App Server fixture and contains no live-redemption path.
-            Review the implementation, safety model, and test cases on GitHub.
+            The automated suite hard-blocks unmarked App Server executables and uses only a
+            stateful fake fixture. The Skill can inspect and prepare, but never performs the commit.
           </p>
         </div>
         <a class="status" href="https://github.com/andyandymike/codex-reset-kit/actions/workflows/ci.yml">

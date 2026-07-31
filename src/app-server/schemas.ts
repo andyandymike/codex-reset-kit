@@ -5,76 +5,95 @@ import {
   type RawResetCredits,
   type ResetCredit,
 } from "../domain/reset-credit.js";
+import { hasControlCharacters } from "../security/redact.js";
 
-const rateLimitWindowSchema = z
-  .object({
-    usedPercent: z.number().finite().optional().nullable(),
-    windowDurationMins: z.number().finite().optional().nullable(),
-    resetsAt: z.number().int().optional().nullable(),
-  })
-  .passthrough();
+const protocolString = z
+  .string()
+  .min(1)
+  .max(4_096)
+  .refine((value) => !hasControlCharacters(value), {
+    message: "Protocol strings must not contain control characters.",
+  });
 
-const rateLimitBucketSchema = z
-  .object({
-    limitId: z.string().optional().nullable(),
-    limitName: z.string().optional().nullable(),
-    primary: rateLimitWindowSchema.optional().nullable(),
-    secondary: rateLimitWindowSchema.optional().nullable(),
-    planType: z.string().optional().nullable(),
-    rateLimitReachedType: z.string().optional().nullable(),
-  })
-  .passthrough();
+const protocolLabel = protocolString.max(256);
+const epochSeconds = z.number().int().min(0).max(253_402_300_799);
 
-const resetCreditSchema = z
-  .object({
-    id: z.string().min(1),
-    resetType: z.string().optional().nullable(),
-    status: z.string().min(1),
-    grantedAt: z.number().int().optional().nullable(),
-    expiresAt: z.number().int().optional().nullable(),
-    title: z.string().optional().nullable(),
-    description: z.string().optional().nullable(),
-  })
-  .passthrough();
+const rateLimitWindowSchema = z.object({
+  usedPercent: z.number().finite().min(0).max(100).optional().nullable(),
+  windowDurationMins: z.number().finite().positive().max(5_256_000).optional().nullable(),
+  resetsAt: epochSeconds.optional().nullable(),
+});
 
-const resetCreditsSchema = z
-  .object({
-    availableCount: z.number().int().nonnegative(),
-    credits: z.array(resetCreditSchema).optional().nullable(),
-  })
-  .passthrough();
+const rateLimitBucketSchema = z.object({
+  limitId: protocolLabel.optional().nullable(),
+  limitName: protocolLabel.optional().nullable(),
+  primary: rateLimitWindowSchema.optional().nullable(),
+  secondary: rateLimitWindowSchema.optional().nullable(),
+  planType: protocolLabel.optional().nullable(),
+  rateLimitReachedType: protocolLabel.optional().nullable(),
+});
 
-export const rateLimitsReadResultSchema = z
-  .object({
-    rateLimits: rateLimitBucketSchema.optional().nullable(),
-    rateLimitsByLimitId: z.record(z.string(), rateLimitBucketSchema).optional(),
-    rateLimitResetCredits: resetCreditsSchema.optional().nullable(),
-  })
-  .passthrough();
+const resetCreditSchema = z.object({
+  id: protocolString.max(1_024),
+  resetType: protocolLabel.optional().nullable(),
+  status: protocolLabel,
+  grantedAt: epochSeconds.optional().nullable(),
+  expiresAt: epochSeconds.optional().nullable(),
+  title: protocolString.optional().nullable(),
+  description: protocolString.optional().nullable(),
+});
 
-export const accountReadResultSchema = z
-  .object({
-    account: z
-      .object({
-        type: z.string(),
-        planType: z.string().optional().nullable(),
-      })
-      .passthrough()
-      .optional()
-      .nullable(),
-    requiresOpenaiAuth: z.boolean().optional(),
-  })
-  .passthrough();
+const resetCreditsSchema = z.object({
+  availableCount: z.number().int().nonnegative().max(1_000_000),
+  credits: z.array(resetCreditSchema).max(1_024).optional().nullable(),
+});
 
-export const consumeResetResultSchema = z
-  .object({
-    outcome: z.string().min(1),
-  })
-  .passthrough();
+const rateLimitsByLimitIdSchema = z
+  .record(protocolLabel, rateLimitBucketSchema)
+  .refine((value) => Object.keys(value).length <= 1_024, {
+    message: "Too many rate-limit buckets were returned.",
+  });
+
+export const rateLimitsReadResultSchema = z.object({
+  rateLimits: rateLimitBucketSchema.optional().nullable(),
+  rateLimitsByLimitId: rateLimitsByLimitIdSchema.optional(),
+  rateLimitResetCredits: resetCreditsSchema.optional().nullable(),
+});
+
+export const accountReadResultSchema = z.object({
+  account: z
+    .object({
+      type: protocolLabel,
+      planType: protocolLabel.optional().nullable(),
+      email: protocolString.max(320).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
+  requiresOpenaiAuth: z.boolean().optional(),
+});
+
+export const initializeResultSchema = z.object({
+  userAgent: protocolString.max(512),
+  platformFamily: protocolLabel.optional().nullable(),
+  platformOs: protocolLabel.optional().nullable(),
+});
+
+export const consumeResetResultSchema = z.object({
+  outcome: z.enum(["reset", "alreadyRedeemed", "nothingToReset", "noCredit"]),
+});
+
+export type ConsumeResetOutcome = z.infer<typeof consumeResetResultSchema>["outcome"];
+
+export interface InitializeSnapshot {
+  userAgent: string;
+  platformFamily: string | null;
+  platformOs: string | null;
+}
 
 export interface AccountSnapshot {
   type: string | null;
   planType: string | null;
+  email: string | null;
   requiresOpenaiAuth: boolean;
 }
 
@@ -119,7 +138,17 @@ export function parseAccountSnapshot(value: unknown): AccountSnapshot {
   return {
     type: parsed.account?.type ?? null,
     planType: parsed.account?.planType ?? null,
+    email: parsed.account?.email ?? null,
     requiresOpenaiAuth: parsed.requiresOpenaiAuth ?? true,
+  };
+}
+
+export function parseInitializeSnapshot(value: unknown): InitializeSnapshot {
+  const parsed = initializeResultSchema.parse(value);
+  return {
+    userAgent: parsed.userAgent,
+    platformFamily: parsed.platformFamily ?? null,
+    platformOs: parsed.platformOs ?? null,
   };
 }
 
@@ -153,6 +182,6 @@ export function parseRateLimitSnapshot(value: unknown): RateLimitSnapshot {
   };
 }
 
-export function parseConsumeOutcome(value: unknown): string {
+export function parseConsumeOutcome(value: unknown): ConsumeResetOutcome {
   return consumeResetResultSchema.parse(value).outcome;
 }

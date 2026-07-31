@@ -38,6 +38,7 @@ auth.json
 *.pem
 *.key
 /.codex/
+/.codex-reset-kit/
 
 # Editor and operating-system files
 /.idea/

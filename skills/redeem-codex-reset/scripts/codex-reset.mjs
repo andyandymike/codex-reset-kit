@@ -47,7 +47,7 @@ var require_windows = __commonJS({
     module.exports = isexe;
     isexe.sync = sync;
     var fs = __require("fs");
-    function checkPathExt(path, options) {
+    function checkPathExt(path3, options) {
       var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
       if (!pathext) {
         return true;
@@ -58,25 +58,25 @@ var require_windows = __commonJS({
       }
       for (var i = 0; i < pathext.length; i++) {
         var p = pathext[i].toLowerCase();
-        if (p && path.substr(-p.length).toLowerCase() === p) {
+        if (p && path3.substr(-p.length).toLowerCase() === p) {
           return true;
         }
       }
       return false;
     }
-    function checkStat(stat, path, options) {
+    function checkStat(stat, path3, options) {
       if (!stat.isSymbolicLink() && !stat.isFile()) {
         return false;
       }
-      return checkPathExt(path, options);
+      return checkPathExt(path3, options);
     }
-    function isexe(path, options, cb) {
-      fs.stat(path, function(er, stat) {
-        cb(er, er ? false : checkStat(stat, path, options));
+    function isexe(path3, options, cb) {
+      fs.stat(path3, function(er, stat) {
+        cb(er, er ? false : checkStat(stat, path3, options));
       });
     }
-    function sync(path, options) {
-      return checkStat(fs.statSync(path), path, options);
+    function sync(path3, options) {
+      return checkStat(fs.statSync(path3), path3, options);
     }
   }
 });
@@ -87,13 +87,13 @@ var require_mode = __commonJS({
     module.exports = isexe;
     isexe.sync = sync;
     var fs = __require("fs");
-    function isexe(path, options, cb) {
-      fs.stat(path, function(er, stat) {
+    function isexe(path3, options, cb) {
+      fs.stat(path3, function(er, stat) {
         cb(er, er ? false : checkStat(stat, options));
       });
     }
-    function sync(path, options) {
-      return checkStat(fs.statSync(path), options);
+    function sync(path3, options) {
+      return checkStat(fs.statSync(path3), options);
     }
     function checkStat(stat, options) {
       return stat.isFile() && checkMode(stat, options);
@@ -126,7 +126,7 @@ var require_isexe = __commonJS({
     }
     module.exports = isexe;
     isexe.sync = sync;
-    function isexe(path, options, cb) {
+    function isexe(path3, options, cb) {
       if (typeof options === "function") {
         cb = options;
         options = {};
@@ -136,7 +136,7 @@ var require_isexe = __commonJS({
           throw new TypeError("callback not provided");
         }
         return new Promise(function(resolve, reject) {
-          isexe(path, options || {}, function(er, is) {
+          isexe(path3, options || {}, function(er, is) {
             if (er) {
               reject(er);
             } else {
@@ -145,7 +145,7 @@ var require_isexe = __commonJS({
           });
         });
       }
-      core(path, options || {}, function(er, is) {
+      core(path3, options || {}, function(er, is) {
         if (er) {
           if (er.code === "EACCES" || options && options.ignoreErrors) {
             er = null;
@@ -155,9 +155,9 @@ var require_isexe = __commonJS({
         cb(er, is);
       });
     }
-    function sync(path, options) {
+    function sync(path3, options) {
       try {
-        return core.sync(path, options || {});
+        return core.sync(path3, options || {});
       } catch (er) {
         if (options && options.ignoreErrors || er.code === "EACCES") {
           return false;
@@ -173,7 +173,7 @@ var require_isexe = __commonJS({
 var require_which = __commonJS({
   "node_modules/which/which.js"(exports, module) {
     var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-    var path = __require("path");
+    var path3 = __require("path");
     var COLON = isWindows ? ";" : ":";
     var isexe = require_isexe();
     var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -211,7 +211,7 @@ var require_which = __commonJS({
           return opt.all && found.length ? resolve(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path.join(pathPart, cmd);
+        const pCmd = path3.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         resolve(subStep(p, i, 0));
       });
@@ -238,7 +238,7 @@ var require_which = __commonJS({
       for (let i = 0; i < pathEnv.length; i++) {
         const ppRaw = pathEnv[i];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path.join(pathPart, cmd);
+        const pCmd = path3.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         for (let j = 0; j < pathExt.length; j++) {
           const cur = p + pathExt[j];
@@ -286,7 +286,7 @@ var require_path_key = __commonJS({
 var require_resolveCommand = __commonJS({
   "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports, module) {
     "use strict";
-    var path = __require("path");
+    var path3 = __require("path");
     var which = require_which();
     var getPathKey = require_path_key();
     function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -304,7 +304,7 @@ var require_resolveCommand = __commonJS({
       try {
         resolved = which.sync(parsed.command, {
           path: env[getPathKey({ env })],
-          pathExt: withoutPathExt ? path.delimiter : void 0
+          pathExt: withoutPathExt ? path3.delimiter : void 0
         });
       } catch (e) {
       } finally {
@@ -313,7 +313,7 @@ var require_resolveCommand = __commonJS({
         }
       }
       if (resolved) {
-        resolved = path.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+        resolved = path3.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
       }
       return resolved;
     }
@@ -367,8 +367,8 @@ var require_shebang_command = __commonJS({
       if (!match) {
         return null;
       }
-      const [path, argument] = match[0].replace(/#! ?/, "").split(" ");
-      const binary = path.split("/").pop();
+      const [path3, argument] = match[0].replace(/#! ?/, "").split(" ");
+      const binary = path3.split("/").pop();
       if (binary === "env") {
         return argument;
       }
@@ -403,7 +403,7 @@ var require_readShebang = __commonJS({
 var require_parse = __commonJS({
   "node_modules/cross-spawn/lib/parse.js"(exports, module) {
     "use strict";
-    var path = __require("path");
+    var path3 = __require("path");
     var resolveCommand = require_resolveCommand();
     var escape = require_escape();
     var readShebang = require_readShebang();
@@ -428,7 +428,7 @@ var require_parse = __commonJS({
       const needsShell = !isExecutableRegExp.test(commandFile);
       if (parsed.options.forceShell || needsShell) {
         const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-        parsed.command = path.normalize(parsed.command);
+        parsed.command = path3.normalize(parsed.command);
         parsed.command = escape.command(parsed.command);
         parsed.args = parsed.args.map((arg) => escape.argument(arg, needsDoubleEscapeMetaChars));
         const shellCommand = [parsed.command].concat(parsed.args).join(" ");
@@ -1304,10 +1304,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path) {
-  if (!path)
+function getElementAtPath(obj, path3) {
+  if (!path3)
     return obj;
-  return path.reduce((acc, key) => acc?.[key], obj);
+  return path3.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -1716,11 +1716,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path, issues) {
+function prefixIssues(path3, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path);
+    iss.path.unshift(path3);
     return iss;
   });
 }
@@ -1867,16 +1867,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path = []) => {
+  const processError = (error52, path3 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else {
-        const fullpath = [...path, ...issue2.path];
+        const fullpath = [...path3, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -1903,17 +1903,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path = []) => {
+  const processError = (error52, path3 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else {
-        const fullpath = [...path, ...issue2.path];
+        const fullpath = [...path3, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -1945,8 +1945,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path) {
+  const path3 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path3) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -14638,13 +14638,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path = ref.slice(1).split("/").filter(Boolean);
-  if (path.length === 0) {
+  const path3 = ref.slice(1).split("/").filter(Boolean);
+  if (path3.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path[0] === defsKey) {
-    const key = path[1];
+  if (path3[0] === defsKey) {
+    const key = path3[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -15074,11 +15074,50 @@ import { createInterface } from "node:readline";
 
 // src/security/redact.ts
 var SENSITIVE_KEY = /^(?:accessToken|refreshToken|apiKey|authorization|cookie|password|secret)$/i;
+function isUnsafeControlCodePoint(codePoint) {
+  return codePoint <= 31 || codePoint >= 127 && codePoint <= 159 || codePoint === 1564 || codePoint === 8206 || codePoint === 8207 || codePoint >= 8234 && codePoint <= 8238 || codePoint >= 8294 && codePoint <= 8297 || codePoint === 65279;
+}
+function hasControlCharacters(value) {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== void 0 && isUnsafeControlCodePoint(codePoint)) {
+      return true;
+    }
+  }
+  return false;
+}
+function neutralizeControlCharacters(value) {
+  let output = "";
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint === 27) {
+      continue;
+    }
+    if (codePoint !== void 0 && isUnsafeControlCodePoint(codePoint) && codePoint !== 9 && codePoint !== 10 && codePoint !== 13) {
+      output += "\uFFFD";
+      continue;
+    }
+    output += character;
+  }
+  return output;
+}
+function flattenTerminalSeparators(value) {
+  let output = "";
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    output += codePoint === 9 || codePoint === 10 || codePoint === 13 ? " " : character;
+  }
+  return output;
+}
 function redactText(value) {
-  return value.replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [REDACTED]").replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, "[REDACTED_API_KEY]").replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, "[REDACTED_TOKEN]").replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]").replace(
+  return neutralizeControlCharacters(value).replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [REDACTED]").replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, "[REDACTED_API_KEY]").replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, "[REDACTED_TOKEN]").replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]").replace(
     /("(?:accessToken|refreshToken|apiKey|authorization|cookie|password|secret)"\s*:\s*)"[^"]*"/gi,
     '$1"[REDACTED]"'
   );
+}
+function safeTerminalField(value, maxLength = 512) {
+  const cleaned = flattenTerminalSeparators(redactText(value)).replace(/\s+/gu, " ").trim();
+  return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength - 1)}\u2026`;
 }
 function redactUnknown(value) {
   if (typeof value === "string") {
@@ -15098,6 +15137,7 @@ function redactUnknown(value) {
 }
 
 // src/app-server/jsonl-transport.ts
+var MAX_PROTOCOL_LINE_CHARACTERS = 4 * 1024 * 1024;
 function isObject2(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
 }
@@ -15114,6 +15154,7 @@ var JsonlTransport = class {
   #pending = /* @__PURE__ */ new Map();
   #nextId = 0;
   #closed = false;
+  #exitDescription = null;
   constructor(child, options) {
     this.#child = child;
     this.#timeoutMs = options.timeoutMs;
@@ -15126,10 +15167,20 @@ var JsonlTransport = class {
     child.once("error", (error51) => {
       this.#failAll("spawn", `App Server process error: ${redactText(error51.message)}`);
     });
-    child.once("exit", (code, signal) => {
+    child.stdin.on("error", (error51) => {
       if (!this.#closed) {
-        const suffix = signal == null ? `code ${String(code)}` : `signal ${signal}`;
-        this.#failAll("closed", `App Server exited with ${suffix}.`);
+        this.#failAll("closed", `App Server stdin failed: ${redactText(error51.message)}`);
+      }
+    });
+    child.once("exit", (code, signal) => {
+      this.#exitDescription = signal == null ? `code ${String(code)}` : `signal ${signal}`;
+    });
+    child.once("close", () => {
+      if (!this.#closed) {
+        this.#failAll(
+          "closed",
+          `App Server closed${this.#exitDescription == null ? "" : ` with ${this.#exitDescription}`}.`
+        );
       }
     });
   }
@@ -15196,12 +15247,34 @@ var JsonlTransport = class {
       }
     });
   }
-  notify(method, params = {}) {
+  async notify(method, params = {}) {
     if (this.#closed) {
       throw new AppServerError("closed", "App Server transport is closed.");
     }
-    this.#child.stdin.write(`${JSON.stringify({ method, params })}
-`);
+    await new Promise((resolve, reject) => {
+      try {
+        this.#child.stdin.write(`${JSON.stringify({ method, params })}
+`, (error51) => {
+          if (error51 == null) {
+            resolve();
+          } else {
+            reject(
+              new AppServerError("closed", `Could not write ${method} to App Server.`, {
+                requestSent: true,
+                cause: error51
+              })
+            );
+          }
+        });
+      } catch (error51) {
+        reject(
+          new AppServerError("closed", `Could not write ${method} to App Server.`, {
+            requestSent: false,
+            cause: error51
+          })
+        );
+      }
+    });
   }
   close() {
     if (this.#closed) {
@@ -15215,14 +15288,27 @@ var JsonlTransport = class {
     if (this.#child.exitCode == null && this.#child.signalCode == null) {
       const killTimer = setTimeout(() => {
         if (this.#child.exitCode == null && this.#child.signalCode == null) {
-          this.#child.kill();
+          this.#child.kill("SIGTERM");
         }
       }, 500);
       killTimer.unref();
-      this.#child.once("exit", () => clearTimeout(killTimer));
+      const forceTimer = setTimeout(() => {
+        if (this.#child.exitCode == null && this.#child.signalCode == null) {
+          this.#child.kill("SIGKILL");
+        }
+      }, 1500);
+      forceTimer.unref();
+      this.#child.once("exit", () => {
+        clearTimeout(killTimer);
+        clearTimeout(forceTimer);
+      });
     }
   }
   #handleLine(line) {
+    if (line.length > MAX_PROTOCOL_LINE_CHARACTERS) {
+      this.#diagnostic("Ignored an oversized App Server protocol line.");
+      return;
+    }
     let message;
     try {
       message = JSON.parse(line);
@@ -15274,14 +15360,18 @@ var JsonlTransport = class {
     };
     try {
       this.#child.stdin.write(`${JSON.stringify(response)}
-`);
+`, (error51) => {
+        if (error51 != null) {
+          this.#failAll("closed", "Could not respond to an App Server request.");
+        }
+      });
     } catch {
       this.#failAll("closed", "Could not respond to an App Server request.");
     }
   }
   #diagnostic(message) {
     try {
-      this.#onDiagnostic(redactText(message));
+      this.#onDiagnostic(safeTerminalField(message, 4096));
     } catch {
     }
   }
@@ -15315,8 +15405,19 @@ var JsonlTransport = class {
 
 // src/app-server/process.ts
 var import_cross_spawn = __toESM(require_cross_spawn(), 1);
+import path from "node:path";
 function spawnAppServer(options) {
   const args = options.args ?? ["app-server", "--stdio"];
+  if (options.command.trim().length === 0 || hasControlCharacters(options.command)) {
+    throw new AppServerError("spawn", "The Codex executable path is invalid.");
+  }
+  const markedFakeFixture = options.env?.CODEX_RESET_FAKE_APP_SERVER === "1" && path.resolve(options.command) === path.resolve(process.execPath) && args.length === 1 && path.basename(args[0] ?? "").toLowerCase() === "fake-app-server.mjs";
+  if (process.env.CODEX_RESET_KIT_TEST_MODE === "1" && !markedFakeFixture) {
+    throw new AppServerError(
+      "spawn",
+      "Test mode blocked an App Server process that was not explicitly marked as the fake fixture."
+    );
+  }
   try {
     return (0, import_cross_spawn.default)(options.command, args, {
       stdio: ["pipe", "pipe", "pipe"],
@@ -15330,6 +15431,7 @@ function spawnAppServer(options) {
 }
 
 // src/domain/reset-credit.ts
+var SUPPORTED_RESET_TYPE = "codexRateLimits";
 function createResetCreditsSnapshot(value) {
   if (value == null) {
     return {
@@ -15347,7 +15449,27 @@ function createResetCreditsSnapshot(value) {
       serviceReported: true
     };
   }
-  const detailsState = value.availableCount === 0 && value.credits.length === 0 ? "empty" : value.credits.length < value.availableCount ? "partial" : "available";
+  const ids = value.credits.map((credit) => credit.id);
+  const hasDuplicateId = new Set(ids).size !== ids.length;
+  const hasUnknownStatus = value.credits.some(
+    (credit) => !(/* @__PURE__ */ new Set(["available", "redeeming", "redeemed"])).has(credit.status)
+  );
+  const statusAvailable = value.credits.filter((credit) => credit.status === "available");
+  const hasUnsupportedAvailableType = statusAvailable.some(
+    (credit) => credit.resetType !== SUPPORTED_RESET_TYPE
+  );
+  let detailsState;
+  if (hasDuplicateId || hasUnknownStatus || hasUnsupportedAvailableType) {
+    detailsState = "inconsistent";
+  } else if (statusAvailable.length < value.availableCount) {
+    detailsState = "partial";
+  } else if (statusAvailable.length > value.availableCount) {
+    detailsState = "inconsistent";
+  } else if (value.availableCount === 0) {
+    detailsState = "empty";
+  } else {
+    detailsState = "available";
+  }
   return {
     availableCount: value.availableCount,
     detailsState,
@@ -15356,51 +15478,65 @@ function createResetCreditsSnapshot(value) {
   };
 }
 function isAvailableCredit(credit) {
-  return credit.status === "available";
+  return credit.status === "available" && credit.resetType === SUPPORTED_RESET_TYPE;
 }
 
 // src/app-server/schemas.ts
+var protocolString = external_exports.string().min(1).max(4096).refine((value) => !hasControlCharacters(value), {
+  message: "Protocol strings must not contain control characters."
+});
+var protocolLabel = protocolString.max(256);
+var epochSeconds = external_exports.number().int().min(0).max(253402300799);
 var rateLimitWindowSchema = external_exports.object({
-  usedPercent: external_exports.number().finite().optional().nullable(),
-  windowDurationMins: external_exports.number().finite().optional().nullable(),
-  resetsAt: external_exports.number().int().optional().nullable()
-}).passthrough();
+  usedPercent: external_exports.number().finite().min(0).max(100).optional().nullable(),
+  windowDurationMins: external_exports.number().finite().positive().max(5256e3).optional().nullable(),
+  resetsAt: epochSeconds.optional().nullable()
+});
 var rateLimitBucketSchema = external_exports.object({
-  limitId: external_exports.string().optional().nullable(),
-  limitName: external_exports.string().optional().nullable(),
+  limitId: protocolLabel.optional().nullable(),
+  limitName: protocolLabel.optional().nullable(),
   primary: rateLimitWindowSchema.optional().nullable(),
   secondary: rateLimitWindowSchema.optional().nullable(),
-  planType: external_exports.string().optional().nullable(),
-  rateLimitReachedType: external_exports.string().optional().nullable()
-}).passthrough();
+  planType: protocolLabel.optional().nullable(),
+  rateLimitReachedType: protocolLabel.optional().nullable()
+});
 var resetCreditSchema = external_exports.object({
-  id: external_exports.string().min(1),
-  resetType: external_exports.string().optional().nullable(),
-  status: external_exports.string().min(1),
-  grantedAt: external_exports.number().int().optional().nullable(),
-  expiresAt: external_exports.number().int().optional().nullable(),
-  title: external_exports.string().optional().nullable(),
-  description: external_exports.string().optional().nullable()
-}).passthrough();
+  id: protocolString.max(1024),
+  resetType: protocolLabel.optional().nullable(),
+  status: protocolLabel,
+  grantedAt: epochSeconds.optional().nullable(),
+  expiresAt: epochSeconds.optional().nullable(),
+  title: protocolString.optional().nullable(),
+  description: protocolString.optional().nullable()
+});
 var resetCreditsSchema = external_exports.object({
-  availableCount: external_exports.number().int().nonnegative(),
-  credits: external_exports.array(resetCreditSchema).optional().nullable()
-}).passthrough();
+  availableCount: external_exports.number().int().nonnegative().max(1e6),
+  credits: external_exports.array(resetCreditSchema).max(1024).optional().nullable()
+});
+var rateLimitsByLimitIdSchema = external_exports.record(protocolLabel, rateLimitBucketSchema).refine((value) => Object.keys(value).length <= 1024, {
+  message: "Too many rate-limit buckets were returned."
+});
 var rateLimitsReadResultSchema = external_exports.object({
   rateLimits: rateLimitBucketSchema.optional().nullable(),
-  rateLimitsByLimitId: external_exports.record(external_exports.string(), rateLimitBucketSchema).optional(),
+  rateLimitsByLimitId: rateLimitsByLimitIdSchema.optional(),
   rateLimitResetCredits: resetCreditsSchema.optional().nullable()
-}).passthrough();
+});
 var accountReadResultSchema = external_exports.object({
   account: external_exports.object({
-    type: external_exports.string(),
-    planType: external_exports.string().optional().nullable()
-  }).passthrough().optional().nullable(),
+    type: protocolLabel,
+    planType: protocolLabel.optional().nullable(),
+    email: protocolString.max(320).optional().nullable()
+  }).optional().nullable(),
   requiresOpenaiAuth: external_exports.boolean().optional()
-}).passthrough();
+});
+var initializeResultSchema = external_exports.object({
+  userAgent: protocolString.max(512),
+  platformFamily: protocolLabel.optional().nullable(),
+  platformOs: protocolLabel.optional().nullable()
+});
 var consumeResetResultSchema = external_exports.object({
-  outcome: external_exports.string().min(1)
-}).passthrough();
+  outcome: external_exports.enum(["reset", "alreadyRedeemed", "nothingToReset", "noCredit"])
+});
 function normalizeWindow(value) {
   if (value == null) {
     return null;
@@ -15437,7 +15573,16 @@ function parseAccountSnapshot(value) {
   return {
     type: parsed.account?.type ?? null,
     planType: parsed.account?.planType ?? null,
+    email: parsed.account?.email ?? null,
     requiresOpenaiAuth: parsed.requiresOpenaiAuth ?? true
+  };
+}
+function parseInitializeSnapshot(value) {
+  const parsed = initializeResultSchema.parse(value);
+  return {
+    userAgent: parsed.userAgent,
+    platformFamily: parsed.platformFamily ?? null,
+    platformOs: parsed.platformOs ?? null
   };
 }
 function parseRateLimitSnapshot(value) {
@@ -15472,8 +15617,10 @@ function parseConsumeOutcome(value) {
 // src/app-server/client.ts
 var StdioCodexAppServerClient = class {
   #transport;
-  constructor(transport) {
+  #accountEpoch;
+  constructor(transport, accountEpoch) {
     this.#transport = transport;
+    this.#accountEpoch = accountEpoch;
   }
   async readAccount() {
     const value = await this.#transport.request("account/read", { refreshToken: false });
@@ -15484,12 +15631,14 @@ var StdioCodexAppServerClient = class {
     return parse3("account/rateLimits/read", value, parseRateLimitSnapshot);
   }
   async consumeResetCredit(params) {
-    const requestParams = params.creditId === void 0 ? { idempotencyKey: params.idempotencyKey } : { idempotencyKey: params.idempotencyKey, creditId: params.creditId };
-    const value = await this.#transport.request(
-      "account/rateLimitResetCredit/consume",
-      requestParams
-    );
+    const value = await this.#transport.request("account/rateLimitResetCredit/consume", {
+      idempotencyKey: params.idempotencyKey,
+      creditId: params.creditId
+    });
     return parse3("account/rateLimitResetCredit/consume", value, parseConsumeOutcome);
+  }
+  getAccountEpoch() {
+    return this.#accountEpoch();
   }
   close() {
     this.#transport.close();
@@ -15508,200 +15657,47 @@ function parse3(method, value, parser) {
 }
 async function connectAppServer(options) {
   const child = spawnAppServer(options);
+  let accountEpoch = 0;
   const transport = new JsonlTransport(child, {
     timeoutMs: options.timeoutMs,
-    ...options.onDiagnostic === void 0 ? {} : { onDiagnostic: options.onDiagnostic }
+    ...options.onDiagnostic === void 0 ? {} : { onDiagnostic: options.onDiagnostic },
+    onNotification: (method) => {
+      if (method === "account/updated") {
+        accountEpoch += 1;
+      }
+    }
   });
   try {
-    await transport.request("initialize", {
+    const initializeResult = await transport.request("initialize", {
       clientInfo: {
         name: "codex_reset_kit",
         title: "Codex Reset Kit",
         version: options.clientVersion
       }
     });
-    transport.notify("initialized", {});
-    return new StdioCodexAppServerClient(transport);
+    parse3("initialize", initializeResult, parseInitializeSnapshot);
+    await transport.notify("initialized", {});
+    return new StdioCodexAppServerClient(transport, () => accountEpoch);
   } catch (error51) {
     transport.close();
     throw error51;
   }
 }
 
-// src/domain/rate-limit.ts
-function getRateLimitBuckets(snapshot) {
-  const entries = Object.entries(snapshot.rateLimitsByLimitId);
-  if (entries.length > 0) {
-    return entries;
-  }
-  if (snapshot.rateLimits == null) {
-    return [];
-  }
-  return [[snapshot.rateLimits.limitId ?? "default", snapshot.rateLimits]];
-}
-function getPlanType(snapshot) {
-  if (snapshot.rateLimits?.planType != null) {
-    return snapshot.rateLimits.planType;
-  }
-  for (const [, bucket] of getRateLimitBuckets(snapshot)) {
-    if (bucket.planType != null) {
-      return bucket.planType;
-    }
-  }
-  return null;
-}
-
-// src/application/account.ts
-var CHATGPT_ACCOUNT_TYPES = /* @__PURE__ */ new Set([
-  "chatgpt",
-  "chatgptAuthTokens",
-  "agentIdentity",
-  "personalAccessToken"
-]);
-function compatibleAccountError(account) {
-  if (account.type == null) {
-    return account.requiresOpenaiAuth ? "Codex is not signed in. Sign in with ChatGPT through Codex first." : "The active Codex provider does not expose ChatGPT rate limits.";
-  }
-  if (!CHATGPT_ACCOUNT_TYPES.has(account.type)) {
-    return `The active Codex account type (${account.type}) cannot use ChatGPT reset credits.`;
-  }
-  return null;
-}
-
-// src/application/output.ts
-var EXIT_CODE = {
-  success: 0,
-  arguments: 2,
-  authentication: 3,
-  detailsUnavailable: 4,
-  noCredit: 5,
-  nothingToReset: 6,
-  cancelled: 7,
-  rejected: 10,
-  verificationIncomplete: 11,
-  outcomeUnknown: 12,
-  appServer: 20
-};
-function createEnvelope(command) {
-  return {
-    schemaVersion: 1,
-    command,
-    ok: false,
-    account: null,
-    rateLimits: null,
-    resetCredits: null,
-    redemption: null,
-    verification: null,
-    diagnostics: [],
-    warnings: [],
-    error: null
-  };
-}
-function publicAccount(account, fallbackPlanType) {
-  return {
-    type: account.type,
-    planType: account.planType ?? fallbackPlanType
-  };
-}
-function publicSnapshot(snapshot) {
-  return {
-    rateLimits: {
-      current: snapshot.rateLimits,
-      byLimitId: snapshot.rateLimitsByLimitId
-    },
-    resetCredits: {
-      availableCount: snapshot.resetCredits.availableCount,
-      detailsState: snapshot.resetCredits.detailsState,
-      credits: snapshot.resetCredits.credits
-    }
-  };
-}
-function applySnapshot(envelope, snapshot) {
-  const view = publicSnapshot(snapshot);
-  envelope.rateLimits = view.rateLimits;
-  envelope.resetCredits = view.resetCredits;
-}
-function succeed(envelope) {
-  envelope.ok = true;
-  envelope.error = null;
-  return { exitCode: EXIT_CODE.success, envelope };
-}
-function fail(envelope, exitCode, code, message, candidates = []) {
-  envelope.ok = false;
-  envelope.error = { code, message, candidates };
-  return { exitCode, envelope };
-}
-
-// src/application/doctor.ts
-async function runDoctor(client) {
-  const envelope = createEnvelope("doctor");
-  envelope.diagnostics.push({
-    name: "app-server",
-    ok: true,
-    message: "The App Server process initialized over JSONL stdio."
-  });
-  const account = await client.readAccount();
-  const accountError = compatibleAccountError(account);
-  envelope.account = publicAccount(account, null);
-  envelope.diagnostics.push({
-    name: "account",
-    ok: accountError == null,
-    message: accountError ?? `Compatible Codex account type: ${String(account.type)}.`
-  });
-  if (accountError != null) {
-    return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
-  }
-  const snapshot = await client.readRateLimits();
-  envelope.account = publicAccount(account, getPlanType(snapshot));
-  applySnapshot(envelope, snapshot);
-  envelope.diagnostics.push({
-    name: "rate-limits",
-    ok: true,
-    message: "ChatGPT rate limits were read successfully."
-  });
-  envelope.diagnostics.push({
-    name: "reset-credit-details",
-    ok: snapshot.resetCredits.detailsState === "available" || snapshot.resetCredits.detailsState === "empty",
-    message: `Reset-credit detail state: ${snapshot.resetCredits.detailsState}.`
-  });
-  if (snapshot.resetCredits.detailsState === "partial") {
-    envelope.warnings.push("Precise selection is disabled because the detail list is partial.");
-  } else if (snapshot.resetCredits.detailsState === "unavailable") {
-    envelope.warnings.push(
-      "Precise selection is disabled because individual details are unavailable."
-    );
-  }
-  return succeed(envelope);
-}
-
-// src/application/list.ts
-async function runList(client) {
-  const envelope = createEnvelope("list");
-  const account = await client.readAccount();
-  const accountError = compatibleAccountError(account);
-  envelope.account = publicAccount(account, null);
-  if (accountError != null) {
-    return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
-  }
-  const snapshot = await client.readRateLimits();
-  envelope.account = publicAccount(account, getPlanType(snapshot));
-  applySnapshot(envelope, snapshot);
-  if (!snapshot.resetCredits.serviceReported) {
-    envelope.warnings.push("The service did not return earned reset-credit information.");
-  } else if (snapshot.resetCredits.detailsState === "unavailable") {
-    envelope.warnings.push(
-      "Only the authoritative available count is known; individual credit details are unavailable."
-    );
-  } else if (snapshot.resetCredits.detailsState === "partial") {
-    envelope.warnings.push(
-      "The service returned fewer detail rows than the available count; the list is partial."
-    );
-  }
-  return succeed(envelope);
-}
-
-// src/application/redeem.ts
+// src/application/attempt-store.ts
 import { randomUUID } from "node:crypto";
+import { link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
+import { homedir } from "node:os";
+import path2 from "node:path";
+import { isDeepStrictEqual } from "node:util";
+
+// src/domain/redemption-attempt.ts
+var REDEMPTION_ATTEMPT_SCHEMA_VERSION = 1;
+var PREPARED_ATTEMPT_TTL_MS = 5 * 60 * 1e3;
+var RECOVERY_ATTEMPT_TTL_MS = 24 * 60 * 60 * 1e3;
+function isTerminalAttemptState(state) {
+  return state === "completed" || state === "rejected" || state === "stale" || state === "closed-unknown";
+}
 
 // src/domain/select-credit.ts
 var CreditSelectionError = class extends Error {
@@ -15733,13 +15729,13 @@ function validateTimeZone(timeZone) {
     return false;
   }
 }
-function epochDateInTimeZone(epochSeconds, timeZone) {
+function epochDateInTimeZone(epochSeconds2, timeZone) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
-  }).formatToParts(new Date(epochSeconds * 1e3));
+  }).formatToParts(new Date(epochSeconds2 * 1e3));
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
 }
@@ -15762,25 +15758,6 @@ function requireCompleteDetails(snapshot) {
   return snapshot.resetCredits.credits;
 }
 function selectCredit(snapshot, selector) {
-  if (selector.kind === "next") {
-    if (!snapshot.resetCredits.serviceReported) {
-      throw new CreditSelectionError(
-        "details-unavailable",
-        "The service did not report reset-credit availability."
-      );
-    }
-    if (snapshot.resetCredits.availableCount === 0) {
-      throw new CreditSelectionError("no-credit", "No earned reset credits are available.");
-    }
-    return {
-      selector,
-      creditId: null,
-      credit: null,
-      warnings: [
-        "The service will choose the credit; this client cannot prove which expiration date will be used."
-      ]
-    };
-  }
   const credits = requireCompleteDetails(snapshot);
   const available = credits.filter(isAvailableCredit);
   if (selector.kind === "id") {
@@ -15844,6 +15821,906 @@ function selectCredit(snapshot, selector) {
   return { selector, creditId: match.id, credit: match, warnings: [] };
 }
 
+// src/application/attempt-store.ts
+var UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+var MAX_EPOCH_SECONDS = 253402300799;
+var MAX_EPOCH_MILLISECONDS = MAX_EPOCH_SECONDS * 1e3;
+var MAX_ATTEMPT_REVISION_BYTES = 1048576;
+var MAX_LOCK_REVISION_BYTES = 65536;
+var journalString = external_exports.string().refine((value) => !hasControlCharacters(value), {
+  message: "Journal strings must not contain control characters."
+});
+var journalLabel = journalString.min(1).max(256);
+var epochMilliseconds = external_exports.number().int().min(0).max(MAX_EPOCH_MILLISECONDS);
+var selectorSchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("id"), id: journalString.min(1).max(1024) }),
+  external_exports.object({ kind: external_exports.literal("earliest") }),
+  external_exports.object({
+    kind: external_exports.literal("expires-on"),
+    date: journalString.refine(validateCalendarDate, "The journaled calendar date is invalid."),
+    timeZone: journalLabel.refine(validateTimeZone, "The journaled time zone is invalid.")
+  })
+]);
+var attemptSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  attemptId: external_exports.string().regex(UUID_PATTERN),
+  revision: external_exports.number().int().nonnegative(),
+  state: external_exports.enum([
+    "prepared",
+    "stale",
+    "sending",
+    "outcome-unknown",
+    "closed-unknown",
+    "completed",
+    "rejected"
+  ]),
+  createdAt: epochMilliseconds,
+  updatedAt: epochMilliseconds,
+  expiresAt: epochMilliseconds,
+  approvedAt: epochMilliseconds.nullable(),
+  accountFingerprint: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  planType: journalLabel.nullable(),
+  requestedSelector: selectorSchema,
+  target: external_exports.object({
+    id: journalString.min(1).max(1024),
+    resetType: external_exports.literal("codexRateLimits"),
+    expiresAt: external_exports.number().int().min(0).max(MAX_EPOCH_SECONDS)
+  }),
+  timeZone: journalLabel.refine(validateTimeZone, "The journaled time zone is invalid."),
+  snapshotDigest: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  idempotencyKey: external_exports.string().regex(UUID_PATTERN),
+  baseline: external_exports.object({
+    observedAt: epochMilliseconds,
+    availableCount: external_exports.number().int().positive().max(1e6),
+    windows: external_exports.array(
+      external_exports.object({
+        key: journalString.min(1).max(512),
+        usedPercent: external_exports.number().finite().min(0).max(100).nullable(),
+        resetsAt: external_exports.number().int().min(0).max(MAX_EPOCH_SECONDS).nullable()
+      })
+    ).max(1024)
+  }),
+  outcome: external_exports.enum(["reset", "alreadyRedeemed", "nothingToReset", "noCredit"]).nullable(),
+  lastError: journalString.max(4096).nullable()
+}).superRefine((attempt, context) => {
+  const invalid = (message) => {
+    context.addIssue({ code: "custom", message });
+  };
+  const expectedExpiry = Math.min(
+    attempt.createdAt + PREPARED_ATTEMPT_TTL_MS,
+    attempt.target.expiresAt * 1e3
+  );
+  if (attempt.updatedAt < attempt.createdAt) {
+    invalid("updatedAt precedes createdAt");
+  }
+  if (attempt.baseline.observedAt !== attempt.createdAt) {
+    invalid("the baseline timestamp is not bound to creation");
+  }
+  if (attempt.expiresAt !== expectedExpiry || attempt.expiresAt <= attempt.createdAt) {
+    invalid("the preparation expiry is not bound to the target and five-minute limit");
+  }
+  if (attempt.approvedAt != null && attempt.approvedAt < attempt.createdAt) {
+    invalid("approvedAt precedes creation");
+  }
+  if ((attempt.state === "prepared" || attempt.state === "stale") && attempt.approvedAt != null) {
+    invalid("an unsent attempt cannot contain an approval timestamp");
+  }
+  if (attempt.state !== "prepared" && attempt.state !== "stale" && attempt.approvedAt == null) {
+    invalid("a sent attempt must contain its approval timestamp");
+  }
+  if (attempt.requestedSelector.kind === "id" && attempt.requestedSelector.id !== attempt.target.id) {
+    invalid("the exact ID selector does not match the journaled target");
+  }
+  if (attempt.requestedSelector.kind === "expires-on" && attempt.requestedSelector.timeZone !== attempt.timeZone) {
+    invalid("the selector timezone does not match the journaled timezone");
+  }
+  if ((attempt.state === "prepared" || attempt.state === "stale" || attempt.state === "sending" || attempt.state === "outcome-unknown") && attempt.outcome != null) {
+    invalid("a nonterminal or stale attempt cannot contain a definitive outcome");
+  }
+  if (attempt.state === "rejected" && attempt.outcome !== "noCredit" && attempt.outcome !== "nothingToReset") {
+    invalid("a rejected attempt must contain a definitive non-consuming outcome");
+  }
+  if (attempt.state === "completed" && attempt.outcome != null && attempt.outcome !== "reset" && attempt.outcome !== "alreadyRedeemed") {
+    invalid("a completed attempt contains an incompatible outcome");
+  }
+  if (attempt.state === "closed-unknown" && attempt.outcome != null) {
+    invalid("a closed unknown attempt cannot claim a definitive outcome");
+  }
+  const windowKeys = attempt.baseline.windows.map((window) => window.key);
+  if (new Set(windowKeys).size !== windowKeys.length) {
+    invalid("the baseline contains duplicate rate-limit window keys");
+  }
+});
+var accountLockRevisionSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  revision: external_exports.number().int().nonnegative(),
+  accountFingerprint: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  active: external_exports.object({
+    attemptId: external_exports.string().regex(UUID_PATTERN),
+    pid: external_exports.number().int().positive().nullable(),
+    token: external_exports.string().regex(UUID_PATTERN),
+    acquiredAt: epochMilliseconds,
+    operationActive: external_exports.boolean()
+  }).superRefine((active, context) => {
+    if (active.operationActive !== (active.pid != null)) {
+      context.addIssue({
+        code: "custom",
+        message: "an active operation must have a PID and a retained owner must not"
+      });
+    }
+  }).nullable()
+});
+var AttemptStoreError = class extends Error {
+  code;
+  constructor(code, message, options = {}) {
+    super(message, options.cause === void 0 ? void 0 : { cause: options.cause });
+    this.name = "AttemptStoreError";
+    this.code = code;
+  }
+};
+function validateAttempt(value) {
+  const result = attemptSchema.safeParse(value);
+  if (!result.success) {
+    throw new AttemptStoreError(
+      "invalid",
+      "The redemption attempt journal is incompatible or corrupted.",
+      {
+        cause: result.error
+      }
+    );
+  }
+  return result.data;
+}
+function validateAttemptId(attemptId) {
+  if (!UUID_PATTERN.test(attemptId)) {
+    throw new AttemptStoreError("invalid", "The attempt ID is not a valid UUID.");
+  }
+}
+function immutableAuthority(attempt) {
+  return {
+    schemaVersion: attempt.schemaVersion,
+    attemptId: attempt.attemptId,
+    createdAt: attempt.createdAt,
+    expiresAt: attempt.expiresAt,
+    accountFingerprint: attempt.accountFingerprint,
+    planType: attempt.planType,
+    requestedSelector: attempt.requestedSelector,
+    target: attempt.target,
+    timeZone: attempt.timeZone,
+    snapshotDigest: attempt.snapshotDigest,
+    idempotencyKey: attempt.idempotencyKey,
+    baseline: attempt.baseline
+  };
+}
+function validateAttemptTransition(current, proposed) {
+  if (!isDeepStrictEqual(immutableAuthority(current), immutableAuthority(proposed))) {
+    throw new AttemptStoreError(
+      "invalid",
+      "Immutable redemption authority changed between journal revisions."
+    );
+  }
+  const allowed = {
+    prepared: /* @__PURE__ */ new Set(["sending", "stale"]),
+    sending: /* @__PURE__ */ new Set([
+      "prepared",
+      "sending",
+      "outcome-unknown",
+      "closed-unknown",
+      "completed",
+      "rejected"
+    ]),
+    "outcome-unknown": /* @__PURE__ */ new Set([
+      "sending",
+      "outcome-unknown",
+      "closed-unknown",
+      "completed",
+      "rejected"
+    ]),
+    stale: /* @__PURE__ */ new Set(),
+    "closed-unknown": /* @__PURE__ */ new Set(),
+    completed: /* @__PURE__ */ new Set(),
+    rejected: /* @__PURE__ */ new Set()
+  };
+  if (!allowed[current.state].has(proposed.state)) {
+    throw new AttemptStoreError(
+      "invalid",
+      `Invalid redemption journal transition: ${current.state} -> ${proposed.state}.`
+    );
+  }
+  if (proposed.updatedAt < current.updatedAt) {
+    throw new AttemptStoreError("invalid", "Redemption journal timestamps moved backwards.");
+  }
+  if (proposed.approvedAt != null && proposed.approvedAt > proposed.updatedAt) {
+    throw new AttemptStoreError(
+      "invalid",
+      "The redemption approval timestamp follows its journal revision."
+    );
+  }
+  if (current.approvedAt != null && proposed.state !== "prepared" && proposed.approvedAt !== current.approvedAt) {
+    throw new AttemptStoreError(
+      "invalid",
+      "The original redemption approval timestamp changed between journal revisions."
+    );
+  }
+}
+function validateInitialAttempt(attempt) {
+  if (attempt.revision !== 0 || attempt.state !== "prepared" || attempt.createdAt !== attempt.updatedAt || attempt.approvedAt != null || attempt.outcome != null) {
+    throw new AttemptStoreError(
+      "invalid",
+      "A redemption journal must begin with one unapproved prepared revision."
+    );
+  }
+}
+function revisionName(revision) {
+  return `${revision.toString().padStart(10, "0")}.json`;
+}
+async function syncDirectory(directory) {
+  try {
+    const handle = await open(directory, "r");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch {
+  }
+}
+async function writeExclusive(file2, value) {
+  const directory = path2.dirname(file2);
+  const temporary = path2.join(directory, `.${path2.basename(file2)}.${randomUUID()}.tmp`);
+  const handle = await open(temporary, "wx", 384);
+  try {
+    await handle.writeFile(`${JSON.stringify(value)}
+`, "utf8");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  try {
+    await link(temporary, file2);
+  } finally {
+    try {
+      await unlink(temporary);
+    } catch {
+    }
+  }
+  await syncDirectory(directory);
+}
+async function readPrivateJsonFile(file2, maxBytes, label) {
+  let metadata;
+  try {
+    metadata = await lstat(file2);
+  } catch (error51) {
+    throw new AttemptStoreError("invalid", `${label} cannot be inspected.`, { cause: error51 });
+  }
+  if (!metadata.isFile() || metadata.isSymbolicLink()) {
+    throw new AttemptStoreError("invalid", `${label} is not a regular private file.`);
+  }
+  if (metadata.size > maxBytes) {
+    throw new AttemptStoreError("invalid", `${label} is unexpectedly large.`);
+  }
+  if (process.platform !== "win32" && (metadata.mode & 63) !== 0) {
+    throw new AttemptStoreError("invalid", `${label} is accessible to other users.`);
+  }
+  try {
+    return JSON.parse(await readFile(file2, "utf8"));
+  } catch (error51) {
+    throw new AttemptStoreError("invalid", `${label} cannot be read.`, { cause: error51 });
+  }
+}
+async function ensurePrivateDirectory(directory) {
+  await mkdir(directory, { recursive: true, mode: 448 });
+  const metadata = await lstat(directory);
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+    throw new AttemptStoreError(
+      "invalid",
+      `The redemption state path is not a private directory: ${directory}`
+    );
+  }
+  if (process.platform !== "win32" && (metadata.mode & 63) !== 0) {
+    throw new AttemptStoreError(
+      "invalid",
+      `The redemption state directory is accessible to other users; restrict it to mode 0700: ${directory}`
+    );
+  }
+}
+function isProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error51) {
+    return error51.code === "EPERM";
+  }
+}
+function defaultAttemptStateDirectory(environment = process.env) {
+  const configured = environment.CODEX_RESET_KIT_STATE_DIR?.trim();
+  const resolved = configured == null || configured.length === 0 ? path2.join(homedir(), ".codex-reset-kit") : path2.resolve(configured);
+  const comparePath = (value) => process.platform === "win32" ? value.toLowerCase() : value;
+  if (comparePath(resolved) === comparePath(path2.parse(resolved).root) || comparePath(resolved) === comparePath(path2.resolve(homedir()))) {
+    throw new AttemptStoreError(
+      "invalid",
+      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root or the home directory."
+    );
+  }
+  return resolved;
+}
+var FileRedemptionAttemptStore = class {
+  #root;
+  constructor(root = defaultAttemptStateDirectory()) {
+    this.#root = root;
+  }
+  async create(attempt) {
+    const validated = validateAttempt(attempt);
+    validateInitialAttempt(validated);
+    validateAttemptId(validated.attemptId);
+    await this.#ensureRoot();
+    const directory = this.#attemptDirectory(validated.attemptId);
+    try {
+      await mkdir(directory, { mode: 448 });
+      await writeExclusive(path2.join(directory, revisionName(0)), validated);
+      await syncDirectory(this.#attemptsDirectory());
+      return validated;
+    } catch (error51) {
+      if (error51.code === "EEXIST") {
+        throw new AttemptStoreError(
+          "conflict",
+          "A redemption attempt with this ID already exists.",
+          {
+            cause: error51
+          }
+        );
+      }
+      throw error51;
+    }
+  }
+  async read(attemptId) {
+    validateAttemptId(attemptId);
+    await this.#ensureRoot();
+    const attemptDirectory = this.#attemptDirectory(attemptId);
+    let entries;
+    try {
+      const metadata = await lstat(attemptDirectory);
+      if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+        throw new AttemptStoreError(
+          "invalid",
+          "The redemption attempt path is not a private directory."
+        );
+      }
+      if (process.platform !== "win32" && (metadata.mode & 63) !== 0) {
+        throw new AttemptStoreError(
+          "invalid",
+          "The redemption attempt directory is accessible to other users."
+        );
+      }
+      entries = await readdir(attemptDirectory);
+    } catch (error51) {
+      if (error51.code === "ENOENT") {
+        throw new AttemptStoreError("not-found", `Redemption attempt ${attemptId} was not found.`, {
+          cause: error51
+        });
+      }
+      throw error51;
+    }
+    const revisions = entries.filter((entry) => /^\d{10}\.json$/.test(entry)).sort();
+    if (revisions.length === 0) {
+      throw new AttemptStoreError("invalid", "The redemption attempt journal has no revisions.");
+    }
+    let previous = null;
+    for (let index = 0; index < revisions.length; index += 1) {
+      const entry = revisions[index];
+      if (entry !== revisionName(index)) {
+        throw new AttemptStoreError(
+          "invalid",
+          "The redemption attempt journal has a missing or non-contiguous revision."
+        );
+      }
+      const value = await readPrivateJsonFile(
+        path2.join(attemptDirectory, entry),
+        MAX_ATTEMPT_REVISION_BYTES,
+        "The redemption attempt journal revision"
+      );
+      const attempt = validateAttempt(value);
+      if (attempt.attemptId !== attemptId || attempt.revision !== index) {
+        throw new AttemptStoreError(
+          "invalid",
+          "The redemption attempt revision does not match its path."
+        );
+      }
+      if (previous == null) {
+        validateInitialAttempt(attempt);
+      } else {
+        validateAttemptTransition(previous, attempt);
+      }
+      previous = attempt;
+    }
+    if (previous == null) {
+      throw new AttemptStoreError("invalid", "The redemption attempt journal has no revisions.");
+    }
+    return previous;
+  }
+  async save(attempt) {
+    const validated = validateAttempt(attempt);
+    const current = await this.read(validated.attemptId);
+    if (current.revision !== validated.revision) {
+      throw new AttemptStoreError("conflict", "The redemption attempt changed concurrently.");
+    }
+    const next = validateAttempt({
+      ...validated,
+      revision: validated.revision + 1,
+      updatedAt: Math.max(Date.now(), current.updatedAt)
+    });
+    validateAttemptTransition(current, next);
+    try {
+      await writeExclusive(
+        path2.join(this.#attemptDirectory(attempt.attemptId), revisionName(next.revision)),
+        next
+      );
+    } catch (error51) {
+      if (error51.code === "EEXIST") {
+        throw new AttemptStoreError("conflict", "The redemption attempt changed concurrently.", {
+          cause: error51
+        });
+      }
+      throw error51;
+    }
+    return next;
+  }
+  async withAccountLock(accountFingerprint2, attemptId, operation) {
+    if (!/^[0-9a-f]{64}$/.test(accountFingerprint2)) {
+      throw new AttemptStoreError("invalid", "The account fingerprint is invalid.");
+    }
+    validateAttemptId(attemptId);
+    await this.#ensureRoot();
+    await ensurePrivateDirectory(this.#accountLockDirectory(accountFingerprint2));
+    const lock = await this.#acquireAccountLock(accountFingerprint2, attemptId);
+    try {
+      return await operation();
+    } finally {
+      let retainUncertainOwner = true;
+      try {
+        const latest = await this.read(attemptId);
+        retainUncertainOwner = latest.state === "sending" || latest.state === "outcome-unknown";
+      } catch {
+      }
+      try {
+        await this.#finishAccountLock(lock, retainUncertainOwner);
+      } catch {
+      }
+    }
+  }
+  async #ensureRoot() {
+    await ensurePrivateDirectory(this.#root);
+    await ensurePrivateDirectory(this.#attemptsDirectory());
+    await ensurePrivateDirectory(this.#locksDirectory());
+  }
+  async #acquireAccountLock(accountFingerprint2, attemptId) {
+    for (let tries = 0; tries < 32; tries += 1) {
+      const current = await this.#readAccountLock(accountFingerprint2);
+      if (current?.active != null) {
+        if (current.active.operationActive && current.active.pid != null && isProcessAlive(current.active.pid)) {
+          throw new AttemptStoreError(
+            "locked",
+            `Another redemption process is active for attempt ${current.active.attemptId}.`
+          );
+        }
+        if (current.active.attemptId !== attemptId) {
+          let owner;
+          try {
+            owner = await this.read(current.active.attemptId);
+          } catch (error51) {
+            throw new AttemptStoreError(
+              "locked",
+              `A crashed redemption process left an unverifiable account owner (${current.active.attemptId}).`,
+              { cause: error51 }
+            );
+          }
+          if (!isTerminalAttemptState(owner.state)) {
+            throw new AttemptStoreError(
+              "locked",
+              `A previous uncertain attempt owns this account. Resume attempt ${owner.attemptId} instead of creating another send.`
+            );
+          }
+        }
+      }
+      const next = {
+        schemaVersion: 1,
+        revision: (current?.revision ?? -1) + 1,
+        accountFingerprint: accountFingerprint2,
+        active: {
+          attemptId,
+          pid: process.pid,
+          token: randomUUID(),
+          acquiredAt: Date.now(),
+          operationActive: true
+        }
+      };
+      try {
+        await writeExclusive(
+          path2.join(this.#accountLockDirectory(accountFingerprint2), revisionName(next.revision)),
+          next
+        );
+        return next;
+      } catch (error51) {
+        if (error51.code !== "EEXIST") {
+          throw error51;
+        }
+      }
+    }
+    throw new AttemptStoreError(
+      "locked",
+      "The account lock changed too many times; no redemption request was sent."
+    );
+  }
+  async #finishAccountLock(owned, retainUncertainOwner) {
+    const ownedToken = owned.active?.token;
+    if (ownedToken == null) {
+      return;
+    }
+    for (let tries = 0; tries < 32; tries += 1) {
+      const current = await this.#readAccountLock(owned.accountFingerprint);
+      if (current == null || current.active?.token !== ownedToken) {
+        return;
+      }
+      const next = {
+        schemaVersion: 1,
+        revision: current.revision + 1,
+        accountFingerprint: owned.accountFingerprint,
+        active: retainUncertainOwner ? {
+          ...current.active,
+          pid: null,
+          operationActive: false
+        } : null
+      };
+      try {
+        await writeExclusive(
+          path2.join(
+            this.#accountLockDirectory(owned.accountFingerprint),
+            revisionName(next.revision)
+          ),
+          next
+        );
+        return;
+      } catch (error51) {
+        if (error51.code !== "EEXIST") {
+          throw error51;
+        }
+      }
+    }
+    throw new AttemptStoreError("locked", "The account lock could not be released safely.");
+  }
+  async #readAccountLock(accountFingerprint2) {
+    const directory = this.#accountLockDirectory(accountFingerprint2);
+    const entries = await readdir(directory);
+    const revisions = entries.filter((entry) => /^\d{10}\.json$/.test(entry)).sort();
+    for (let index = 0; index < revisions.length; index += 1) {
+      if (revisions[index] !== revisionName(index)) {
+        throw new AttemptStoreError(
+          "invalid",
+          "The account lock journal has a missing or non-contiguous revision."
+        );
+      }
+    }
+    const latest = revisions.at(-1);
+    if (latest == null) {
+      return null;
+    }
+    const value = await readPrivateJsonFile(
+      path2.join(directory, latest),
+      MAX_LOCK_REVISION_BYTES,
+      "The account lock journal revision"
+    );
+    const parsed = accountLockRevisionSchema.safeParse(value);
+    if (!parsed.success) {
+      throw new AttemptStoreError("invalid", "The account lock journal is corrupted.", {
+        cause: parsed.error
+      });
+    }
+    if (parsed.data.accountFingerprint !== accountFingerprint2 || revisionName(parsed.data.revision) !== latest) {
+      throw new AttemptStoreError("invalid", "The account lock revision does not match its path.");
+    }
+    return parsed.data;
+  }
+  #attemptsDirectory() {
+    return path2.join(this.#root, "attempts");
+  }
+  #locksDirectory() {
+    return path2.join(this.#root, "locks");
+  }
+  #accountLockDirectory(accountFingerprint2) {
+    return path2.join(this.#locksDirectory(), accountFingerprint2);
+  }
+  #attemptDirectory(attemptId) {
+    return path2.join(this.#attemptsDirectory(), attemptId);
+  }
+};
+
+// src/domain/rate-limit.ts
+function getRateLimitBuckets(snapshot) {
+  const entries = Object.entries(snapshot.rateLimitsByLimitId);
+  if (entries.length > 0) {
+    return entries;
+  }
+  if (snapshot.rateLimits == null) {
+    return [];
+  }
+  return [[snapshot.rateLimits.limitId ?? "default", snapshot.rateLimits]];
+}
+function getPlanType(snapshot) {
+  if (snapshot.rateLimits?.planType != null) {
+    return snapshot.rateLimits.planType;
+  }
+  for (const [, bucket] of getRateLimitBuckets(snapshot)) {
+    if (bucket.planType != null) {
+      return bucket.planType;
+    }
+  }
+  return null;
+}
+function getReportedPlanTypes(snapshot) {
+  const plans = [
+    snapshot.rateLimits?.planType,
+    ...Object.values(snapshot.rateLimitsByLimitId).map((bucket) => bucket.planType)
+  ].filter((plan) => plan != null);
+  return [...new Set(plans)];
+}
+
+// src/application/account.ts
+import { createHash } from "node:crypto";
+var SUPPORTED_PERSONAL_PLANS = /* @__PURE__ */ new Set(["free", "go", "plus", "pro", "prolite"]);
+var WORKSPACE_PLANS = /* @__PURE__ */ new Set([
+  "team",
+  "self_serve_business_usage_based",
+  "business",
+  "ent26",
+  "enterprise_cbp_usage_based",
+  "enterprise",
+  "hc",
+  "education",
+  "edu"
+]);
+function compatibleAccountError(account) {
+  if (account.type == null) {
+    return account.requiresOpenaiAuth ? "Codex is not signed in. Sign in with ChatGPT through Codex first." : "The active Codex provider does not expose ChatGPT rate limits.";
+  }
+  if (account.type !== "chatgpt") {
+    return `The active Codex account type (${account.type}) cannot use ChatGPT reset credits.`;
+  }
+  return null;
+}
+function redemptionIdentityError(account) {
+  const compatibilityError = compatibleAccountError(account);
+  if (compatibilityError != null) {
+    return compatibilityError;
+  }
+  if (account.email == null || account.email.trim().length === 0) {
+    return "The active ChatGPT account has no stable identity field, so redemption cannot be safely bound to it.";
+  }
+  return null;
+}
+function redemptionPlanError(planType) {
+  const plan = planType?.trim().toLowerCase();
+  if (plan == null || plan.length === 0) {
+    return "The active ChatGPT plan could not be identified, so redemption is disabled.";
+  }
+  if (SUPPORTED_PERSONAL_PLANS.has(plan)) {
+    return null;
+  }
+  if (WORKSPACE_PLANS.has(plan)) {
+    return "Workspace and enterprise ChatGPT plans are not supported by this independent App Server client.";
+  }
+  return `The active ChatGPT plan (${planType}) is not recognized as a supported personal plan, so redemption is disabled.`;
+}
+function redemptionAccountError(account) {
+  return redemptionIdentityError(account) ?? redemptionPlanError(account.planType);
+}
+function accountFingerprint(account) {
+  const email3 = account.email?.trim().toLowerCase();
+  if (account.type !== "chatgpt" || email3 == null || email3.length === 0) {
+    throw new Error("A ChatGPT account email is required to create a redemption fingerprint.");
+  }
+  return createHash("sha256").update(`chatgpt\0${email3}`, "utf8").digest("hex");
+}
+function publicAccountFingerprint(account) {
+  try {
+    return accountFingerprint(account).slice(0, 16);
+  } catch {
+    return null;
+  }
+}
+function maskAccountEmail(account) {
+  const email3 = account.email?.trim();
+  if (email3 == null) {
+    return null;
+  }
+  const separator = email3.lastIndexOf("@");
+  if (separator <= 0 || separator === email3.length - 1) {
+    return "[unavailable]";
+  }
+  const local = email3.slice(0, separator);
+  const domain2 = email3.slice(separator + 1);
+  const maskedLocal = `${local.slice(0, 1)}***`;
+  const domainParts = domain2.split(".");
+  const host = domainParts.shift() ?? "";
+  const suffix = domainParts.length === 0 ? "" : `.${domainParts.join(".")}`;
+  return `${maskedLocal}@${host.slice(0, 1)}***${suffix}`;
+}
+
+// src/application/output.ts
+var EXIT_CODE = {
+  success: 0,
+  arguments: 2,
+  authentication: 3,
+  detailsUnavailable: 4,
+  noCredit: 5,
+  nothingToReset: 6,
+  cancelled: 7,
+  stale: 8,
+  attempt: 9,
+  rejected: 10,
+  verificationIncomplete: 11,
+  outcomeUnknown: 12,
+  unknownClosed: 13,
+  journalIncomplete: 14,
+  appServer: 20
+};
+function publicCredit(credit) {
+  return {
+    id: credit.id,
+    resetType: credit.resetType,
+    status: credit.status,
+    grantedAt: credit.grantedAt,
+    expiresAt: credit.expiresAt
+  };
+}
+function createEnvelope(command) {
+  return {
+    schemaVersion: 2,
+    command,
+    ok: false,
+    account: null,
+    rateLimits: null,
+    resetCredits: null,
+    redemption: null,
+    verification: null,
+    diagnostics: [],
+    warnings: [],
+    error: null
+  };
+}
+function publicAccount(account, fallbackPlanType, fingerprint = null) {
+  return {
+    type: account.type,
+    planType: account.planType ?? fallbackPlanType,
+    fingerprint
+  };
+}
+function publicSnapshot(snapshot, options = {}) {
+  return {
+    rateLimits: {
+      current: snapshot.rateLimits,
+      byLimitId: snapshot.rateLimitsByLimitId
+    },
+    resetCredits: {
+      availableCount: snapshot.resetCredits.availableCount,
+      detailsState: snapshot.resetCredits.detailsState,
+      credits: options.includeCredits === false ? [] : snapshot.resetCredits.credits.map(publicCredit)
+    }
+  };
+}
+function applySnapshot(envelope, snapshot, options = {}) {
+  const view = publicSnapshot(snapshot, options);
+  envelope.rateLimits = view.rateLimits;
+  envelope.resetCredits = view.resetCredits;
+}
+function succeed(envelope) {
+  envelope.ok = true;
+  envelope.error = null;
+  return { exitCode: EXIT_CODE.success, envelope };
+}
+function completeWithWarning(envelope, exitCode = EXIT_CODE.verificationIncomplete) {
+  envelope.ok = true;
+  envelope.error = null;
+  return { exitCode, envelope };
+}
+function fail(envelope, exitCode, code, message, candidates = []) {
+  envelope.ok = false;
+  envelope.error = { code, message, candidates: candidates.map(publicCredit) };
+  return { exitCode, envelope };
+}
+
+// src/application/doctor.ts
+async function runDoctor(client) {
+  const envelope = createEnvelope("doctor");
+  envelope.diagnostics.push({
+    name: "app-server",
+    ok: true,
+    message: "The App Server process initialized over JSONL stdio."
+  });
+  const account = await client.readAccount();
+  const accountError = compatibleAccountError(account);
+  envelope.account = publicAccount(account, null, publicAccountFingerprint(account));
+  envelope.diagnostics.push({
+    name: "account",
+    ok: accountError == null,
+    message: accountError ?? `Compatible Codex account type: ${String(account.type)}.`
+  });
+  if (accountError != null) {
+    return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
+  }
+  const snapshot = await client.readRateLimits();
+  const accountWithPlan = { ...account, planType: account.planType ?? getPlanType(snapshot) };
+  envelope.account = publicAccount(
+    accountWithPlan,
+    getPlanType(snapshot),
+    publicAccountFingerprint(accountWithPlan)
+  );
+  applySnapshot(envelope, snapshot);
+  envelope.diagnostics.push({
+    name: "rate-limits",
+    ok: true,
+    message: "ChatGPT rate limits were read successfully."
+  });
+  envelope.diagnostics.push({
+    name: "reset-credit-details",
+    ok: snapshot.resetCredits.detailsState === "available" || snapshot.resetCredits.detailsState === "empty",
+    message: `Reset-credit detail state: ${snapshot.resetCredits.detailsState}.`
+  });
+  const reportedPlans = getReportedPlanTypes(snapshot);
+  const planInconsistent = reportedPlans.some((plan) => plan !== accountWithPlan.planType);
+  const redemptionError = redemptionAccountError(accountWithPlan) ?? (planInconsistent ? "The account and rate-limit buckets report inconsistent ChatGPT plans." : null);
+  envelope.diagnostics.push({
+    name: "redemption-account",
+    ok: redemptionError == null,
+    message: redemptionError ?? "The account is a known personal ChatGPT plan eligible for preparation."
+  });
+  if (snapshot.resetCredits.detailsState === "partial") {
+    envelope.warnings.push("Precise selection is disabled because the detail list is partial.");
+  } else if (snapshot.resetCredits.detailsState === "unavailable") {
+    envelope.warnings.push(
+      "Precise selection is disabled because individual details are unavailable."
+    );
+  } else if (snapshot.resetCredits.detailsState === "inconsistent") {
+    envelope.warnings.push(
+      "Precise selection is disabled because reset-credit details are inconsistent or unsupported."
+    );
+  }
+  return succeed(envelope);
+}
+
+// src/application/list.ts
+async function runList(client) {
+  const envelope = createEnvelope("list");
+  const account = await client.readAccount();
+  const accountError = compatibleAccountError(account);
+  envelope.account = publicAccount(account, null, publicAccountFingerprint(account));
+  if (accountError != null) {
+    return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
+  }
+  const snapshot = await client.readRateLimits();
+  envelope.account = publicAccount(
+    account,
+    getPlanType(snapshot),
+    publicAccountFingerprint(account)
+  );
+  applySnapshot(envelope, snapshot);
+  if (!snapshot.resetCredits.serviceReported) {
+    envelope.warnings.push("The service did not return earned reset-credit information.");
+  } else if (snapshot.resetCredits.detailsState === "unavailable") {
+    envelope.warnings.push(
+      "Only the authoritative available count is known; individual credit details are unavailable."
+    );
+  } else if (snapshot.resetCredits.detailsState === "partial") {
+    envelope.warnings.push(
+      "The service returned fewer detail rows than the available count; the list is partial."
+    );
+  } else if (snapshot.resetCredits.detailsState === "inconsistent") {
+    envelope.warnings.push(
+      "Reset-credit details conflict with the authoritative count or contain unsupported values; redemption is disabled."
+    );
+  }
+  return succeed(envelope);
+}
+
 // src/domain/verification.ts
 function collectWindows(snapshot) {
   const windows = /* @__PURE__ */ new Map();
@@ -15857,247 +16734,907 @@ function collectWindows(snapshot) {
   }
   return windows;
 }
-function windowShowsReset(before, after) {
-  const usageDropped = before.usedPercent != null && after.usedPercent != null && after.usedPercent < before.usedPercent;
-  const resetMovedLater = before.resetsAt != null && after.resetsAt != null && after.resetsAt > before.resetsAt;
+function windowShowsStrongReset(before, after) {
+  const canCompareUsage = before.usedPercent != null && after.usedPercent != null;
+  const canCompareReset = before.resetsAt != null && after.resetsAt != null;
+  const usageDropped = canCompareUsage && (after.usedPercent ?? 0) < (before.usedPercent ?? 0);
+  const resetMovedLater = canCompareReset && (after.resetsAt ?? 0) > (before.resetsAt ?? 0);
+  if (canCompareUsage && canCompareReset) {
+    return usageDropped && resetMovedLater;
+  }
   return usageDropped || resetMovedLater;
 }
-function verifyRedemption(outcome, before, after) {
+function targetAvailability(attempt, after) {
+  if (after.resetCredits.detailsState !== "available" && after.resetCredits.detailsState !== "empty") {
+    return null;
+  }
+  return after.resetCredits.credits.some(
+    (credit) => credit.id === attempt.target.id && credit.status === "available"
+  );
+}
+function verifyRedemption(attempt, after, observedAt = Date.now()) {
   if (after == null) {
     return {
       status: "unverified",
       availableCountDelta: null,
+      targetAvailableAfter: null,
       changedWindows: [],
-      notes: ["The consume outcome was successful, but the post-consume snapshot was unavailable."]
+      naturalRolloverPossible: false,
+      notes: ["The post-consume snapshot was unavailable."]
     };
   }
-  const availableCountDelta = before.resetCredits.serviceReported && after.resetCredits.serviceReported ? before.resetCredits.availableCount - after.resetCredits.availableCount : null;
-  const beforeWindows = collectWindows(before);
+  const availableCountDelta = after.resetCredits.serviceReported ? attempt.baseline.availableCount - after.resetCredits.availableCount : null;
+  const targetAvailableAfter = targetAvailability(attempt, after);
   const afterWindows = collectWindows(after);
   const changedWindows = [];
-  for (const [key, previous] of beforeWindows) {
-    const current = afterWindows.get(key);
-    if (current != null && windowShowsReset(previous, current)) {
-      changedWindows.push(key);
+  let naturalRolloverPossible = attempt.target.expiresAt * 1e3 <= observedAt;
+  for (const previous of attempt.baseline.windows) {
+    const current = afterWindows.get(previous.key);
+    if (current == null) {
+      continue;
+    }
+    if (previous.resetsAt != null && previous.resetsAt * 1e3 >= attempt.baseline.observedAt && previous.resetsAt * 1e3 <= observedAt) {
+      naturalRolloverPossible = true;
+      continue;
+    }
+    if (windowShowsStrongReset(previous, current)) {
+      changedWindows.push(previous.key);
     }
   }
-  if (outcome === "reset" && availableCountDelta === 1 && changedWindows.length > 0) {
+  if (availableCountDelta === 1 && targetAvailableAfter === false && changedWindows.length > 0 && !naturalRolloverPossible) {
     return {
       status: "verified",
       availableCountDelta,
+      targetAvailableAfter,
       changedWindows,
+      naturalRolloverPossible,
       notes: []
     };
   }
   const notes = [];
-  if (outcome === "alreadyRedeemed") {
+  if (targetAvailableAfter === true) {
+    notes.push("The exact prepared credit is still available.");
+  } else if (targetAvailableAfter == null) {
     notes.push(
-      "The server reported an idempotent replay, so this run may not observe the original delta."
+      "The post-consume details cannot prove whether the exact prepared credit disappeared."
     );
   }
   if (availableCountDelta == null) {
-    notes.push("A reset-credit count was unavailable, so the count delta cannot be verified.");
+    notes.push("The authoritative reset-credit count was unavailable after the request.");
   } else if (availableCountDelta > 1) {
     notes.push(
-      "More than one credit disappeared; expiration or concurrent activity may have occurred."
+      "More than one credit disappeared, so concurrent activity or expiry may have occurred."
     );
   } else if (availableCountDelta <= 0) {
-    notes.push("The available credit count did not decrease in the observed snapshots.");
+    notes.push("The authoritative available count did not decrease by one.");
   }
   if (changedWindows.length === 0) {
-    notes.push("No eligible rate-limit window showed a clear reset signal yet.");
+    notes.push("No rate-limit window showed a strong reset signal.");
   }
-  const hasAnySignal = (availableCountDelta ?? 0) > 0 || changedWindows.length > 0;
+  if (naturalRolloverPossible) {
+    notes.push(
+      "A target expiry or natural rate-limit rollover occurred during the observation window."
+    );
+  }
+  const hasAnySignal = targetAvailableAfter === false || (availableCountDelta ?? 0) > 0 || changedWindows.length > 0;
   return {
     status: hasAnySignal ? "partial" : "unverified",
     availableCountDelta,
+    targetAvailableAfter,
     changedWindows,
+    naturalRolloverPossible,
     notes
   };
 }
 
+// src/application/redemption-intent.ts
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+function sortedWindows(snapshot) {
+  const windows = [];
+  for (const [bucketId, bucket] of getRateLimitBuckets(snapshot)) {
+    if (bucket.primary != null) {
+      windows.push({
+        key: `${bucketId}:primary`,
+        usedPercent: bucket.primary.usedPercent,
+        resetsAt: bucket.primary.resetsAt
+      });
+    }
+    if (bucket.secondary != null) {
+      windows.push({
+        key: `${bucketId}:secondary`,
+        usedPercent: bucket.secondary.usedPercent,
+        resetsAt: bucket.secondary.resetsAt
+      });
+    }
+  }
+  return windows.sort((left, right) => left.key.localeCompare(right.key));
+}
+function createRedemptionBaseline(snapshot, observedAt) {
+  return {
+    observedAt,
+    availableCount: snapshot.resetCredits.availableCount,
+    windows: sortedWindows(snapshot)
+  };
+}
+function safetySnapshotDigest(fingerprint, snapshot) {
+  const availableCredits = snapshot.resetCredits.credits.filter((credit) => credit.status === "available").map((credit) => ({
+    id: credit.id,
+    resetType: credit.resetType,
+    expiresAt: credit.expiresAt
+  })).sort((left, right) => left.id.localeCompare(right.id));
+  const canonical = JSON.stringify({
+    accountFingerprint: fingerprint,
+    availableCount: snapshot.resetCredits.availableCount,
+    detailsState: snapshot.resetCredits.detailsState,
+    availableCredits,
+    rateLimits: {
+      current: canonicalBucket(snapshot.rateLimits),
+      byLimitId: Object.entries(snapshot.rateLimitsByLimitId).sort(([left], [right]) => left.localeCompare(right)).map(([id, bucket]) => [id, canonicalBucket(bucket)])
+    }
+  });
+  return createHash2("sha256").update(canonical, "utf8").digest("hex");
+}
+function canonicalBucket(bucket) {
+  if (bucket == null) {
+    return null;
+  }
+  return {
+    limitId: bucket.limitId,
+    limitName: bucket.limitName,
+    planType: bucket.planType,
+    rateLimitReachedType: bucket.rateLimitReachedType,
+    primary: bucket.primary,
+    secondary: bucket.secondary
+  };
+}
+function createRedemptionAttempt(account, snapshot, selection, timeZone, now = Date.now()) {
+  if (selection.credit == null || selection.creditId == null || selection.credit.id !== selection.creditId || selection.credit.resetType !== SUPPORTED_RESET_TYPE || selection.credit.expiresAt == null) {
+    throw new Error("A prepared redemption requires one exact, supported credit with an expiry.");
+  }
+  const targetExpiryMs = selection.credit.expiresAt * 1e3;
+  if (targetExpiryMs <= now) {
+    throw new Error("An expired reset credit cannot be prepared for redemption.");
+  }
+  const fingerprint = accountFingerprint(account);
+  return {
+    schemaVersion: REDEMPTION_ATTEMPT_SCHEMA_VERSION,
+    attemptId: randomUUID2(),
+    revision: 0,
+    state: "prepared",
+    createdAt: now,
+    updatedAt: now,
+    expiresAt: Math.min(now + PREPARED_ATTEMPT_TTL_MS, targetExpiryMs),
+    approvedAt: null,
+    accountFingerprint: fingerprint,
+    planType: account.planType,
+    requestedSelector: selection.selector,
+    target: {
+      id: selection.credit.id,
+      resetType: SUPPORTED_RESET_TYPE,
+      expiresAt: selection.credit.expiresAt
+    },
+    timeZone,
+    snapshotDigest: safetySnapshotDigest(fingerprint, snapshot),
+    idempotencyKey: randomUUID2(),
+    baseline: createRedemptionBaseline(snapshot, now),
+    outcome: null,
+    lastError: null
+  };
+}
+function confirmationChallenge(attempt) {
+  return `REDEEM ${attempt.attemptId.slice(0, 8).toUpperCase()}`;
+}
+function snapshotStillMatchesAttempt(attempt, account, snapshot, now = Date.now()) {
+  if (now >= attempt.expiresAt) {
+    return { ok: false, reason: "The prepared confirmation expired." };
+  }
+  if (attempt.target.expiresAt * 1e3 <= now) {
+    return { ok: false, reason: "The prepared reset credit has expired." };
+  }
+  let fingerprint;
+  const accountWithPlan = { ...account, planType: account.planType ?? getPlanType(snapshot) };
+  const accountError = redemptionAccountError(accountWithPlan);
+  if (accountError != null) {
+    return { ok: false, reason: accountError };
+  }
+  if (getReportedPlanTypes(snapshot).some((plan) => plan !== accountWithPlan.planType)) {
+    return {
+      ok: false,
+      reason: "The active ChatGPT plan changed or the rate-limit snapshot reports inconsistent plans."
+    };
+  }
+  try {
+    fingerprint = accountFingerprint(accountWithPlan);
+  } catch {
+    return { ok: false, reason: "The active account no longer has a stable identity." };
+  }
+  if (fingerprint !== attempt.accountFingerprint) {
+    return { ok: false, reason: "The active ChatGPT account changed after preparation." };
+  }
+  if (accountWithPlan.planType !== attempt.planType) {
+    return { ok: false, reason: "The active ChatGPT plan changed after preparation." };
+  }
+  if (safetySnapshotDigest(fingerprint, snapshot) !== attempt.snapshotDigest) {
+    return {
+      ok: false,
+      reason: "The reset-credit or rate-limit snapshot changed after preparation."
+    };
+  }
+  const target = snapshot.resetCredits.credits.find(
+    (credit) => credit.id === attempt.target.id && credit.status === "available"
+  );
+  if (target == null || target.resetType !== attempt.target.resetType || target.expiresAt !== attempt.target.expiresAt) {
+    return { ok: false, reason: "The prepared reset credit is no longer exactly available." };
+  }
+  return { ok: true };
+}
+
 // src/application/redeem.ts
-var DEFAULT_VERIFICATION_DELAYS_MS = [300, 900];
+var DEFAULT_VERIFICATION_DELAYS_MS = [0, 500, 1500, 3e3];
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+function frozenClone(value) {
+  const clone2 = structuredClone(value);
+  const freeze = (candidate) => {
+    if (candidate == null || typeof candidate !== "object" || Object.isFrozen(candidate)) {
+      return;
+    }
+    for (const child of Object.values(candidate)) {
+      freeze(child);
+    }
+    Object.freeze(candidate);
+  };
+  freeze(clone2);
+  return clone2;
 }
 function selectionFailure(envelope, error51) {
   const exitCode = error51.code === "no-credit" ? EXIT_CODE.noCredit : EXIT_CODE.detailsUnavailable;
   return fail(envelope, exitCode, error51.code, error51.message, error51.candidates);
 }
-function selectForAttempt(before, selector, recoveryKey) {
-  if (recoveryKey === void 0) {
-    return selectCredit(before, selector);
+var ReconciliationBindingError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ReconciliationBindingError";
   }
-  if (selector.kind !== "id" && selector.kind !== "next") {
-    throw new CreditSelectionError(
-      "invalid-selector",
-      "Idempotent recovery requires the previously printed --credit-id, or --next when the original request used service selection."
-    );
+};
+function accountMatchesAttempt(account, attempt) {
+  if (redemptionIdentityError(account) != null) {
+    return false;
   }
   try {
-    return selectCredit(before, selector);
-  } catch (error51) {
-    if (!(error51 instanceof CreditSelectionError)) {
-      throw error51;
-    }
-    if (!(/* @__PURE__ */ new Set(["no-credit", "details-unavailable", "not-found"])).has(error51.code)) {
-      throw error51;
-    }
-    return {
-      selector,
-      creditId: selector.kind === "id" ? selector.id : null,
-      credit: null,
-      warnings: [
-        "Recovery mode cannot re-prove the original credit from the current snapshot; safety relies on reusing the exact idempotency key and original request parameters."
-      ]
-    };
+    return accountFingerprint(account) === attempt.accountFingerprint;
+  } catch {
+    return false;
   }
 }
-function setFailedVerification(envelope, before) {
-  envelope.verification = {
-    status: "failed",
-    availableCountDelta: null,
-    changedWindows: [],
-    notes: [],
-    before: publicSnapshot(before),
-    after: null
+async function readAccountBoundRateLimits(client, attempt) {
+  const epochBefore = client.getAccountEpoch();
+  const accountBefore = await client.readAccount();
+  if (!accountMatchesAttempt(accountBefore, attempt)) {
+    throw new ReconciliationBindingError(
+      "Read-only reconciliation stopped because the active ChatGPT account no longer matches the journal."
+    );
+  }
+  const snapshot = await client.readRateLimits();
+  const accountAfter = await client.readAccount();
+  if (client.getAccountEpoch() !== epochBefore || !accountMatchesAttempt(accountAfter, attempt)) {
+    throw new ReconciliationBindingError(
+      "Read-only reconciliation stopped because the active ChatGPT account changed during the proof read."
+    );
+  }
+  const observedPlans = [
+    accountBefore.planType,
+    ...getReportedPlanTypes(snapshot),
+    accountAfter.planType
+  ].filter((plan) => plan != null);
+  if (observedPlans.length === 0 || observedPlans.some((plan) => plan !== attempt.planType) || redemptionAccountError({ ...accountAfter, planType: observedPlans[0] ?? null }) != null) {
+    throw new ReconciliationBindingError(
+      "Read-only reconciliation stopped because the active ChatGPT plan no longer matches the journal."
+    );
+  }
+  return snapshot;
+}
+function applyAttempt(envelope, attempt) {
+  const targetCompleted = attempt.state === "completed" || attempt.outcome === "reset" || attempt.outcome === "alreadyRedeemed";
+  envelope.redemption = {
+    attemptId: attempt.attemptId,
+    state: attempt.state,
+    requestedSelector: attempt.requestedSelector,
+    creditId: attempt.target.id,
+    selectedCredit: {
+      id: attempt.target.id,
+      resetType: attempt.target.resetType,
+      status: attempt.state === "closed-unknown" ? "unknown" : targetCompleted ? "redeemed" : "available",
+      grantedAt: null,
+      expiresAt: attempt.target.expiresAt
+    },
+    timeZone: attempt.timeZone,
+    confirmationExpiresAt: Math.floor(attempt.expiresAt / 1e3),
+    outcome: attempt.outcome,
+    recoveryCommand: attempt.state === "sending" || attempt.state === "outcome-unknown" ? `codex-reset recover --attempt ${attempt.attemptId}` : null
   };
 }
-async function runRedeem(client, options) {
-  const envelope = createEnvelope("redeem");
+function attemptFailure(command, error51) {
+  const envelope = createEnvelope(command);
+  if (error51 instanceof AttemptStoreError) {
+    const exitCode = error51.code === "locked" || error51.code === "conflict" ? EXIT_CODE.stale : EXIT_CODE.attempt;
+    return fail(envelope, exitCode, `attempt-${error51.code}`, error51.message);
+  }
+  throw error51;
+}
+async function saveState(store, attempt, state, changes = {}) {
+  return store.save({ ...attempt, state, ...changes });
+}
+async function readVerification(client, attempt, options) {
+  const delays = options.verificationDelaysMs ?? DEFAULT_VERIFICATION_DELAYS_MS;
+  const sleep = options.sleep ?? wait;
+  let after = null;
+  let verification = verifyRedemption(attempt, null, options.now());
+  const warnings = [];
+  let bindingError = null;
+  for (let index = 0; index <= delays.length; index += 1) {
+    if (index > 0) {
+      const delay = delays[index - 1];
+      if (delay != null && delay > 0) {
+        await sleep(delay);
+      }
+    }
+    try {
+      after = await readAccountBoundRateLimits(client, attempt);
+      verification = verifyRedemption(attempt, after, options.now());
+      if (verification.status === "verified") {
+        break;
+      }
+    } catch (error51) {
+      warnings.push(
+        `A read-only reconciliation failed: ${redactText(error51 instanceof Error ? error51.message : String(error51))}`
+      );
+      if (error51 instanceof ReconciliationBindingError) {
+        bindingError = error51.message;
+        break;
+      }
+    }
+  }
+  return { after, verification, warnings, bindingError };
+}
+async function finalizeKnownOutcome(client, store, envelope, attempt, outcome, options) {
+  if (outcome === "noCredit" || outcome === "nothingToReset") {
+    attempt = await saveState(store, attempt, "rejected", { outcome, lastError: null });
+    applyAttempt(envelope, attempt);
+    envelope.verification = {
+      status: "failed",
+      availableCountDelta: null,
+      targetAvailableAfter: null,
+      changedWindows: [],
+      naturalRolloverPossible: false,
+      notes: []
+    };
+    return fail(
+      envelope,
+      outcome === "noCredit" ? EXIT_CODE.noCredit : EXIT_CODE.nothingToReset,
+      outcome === "noCredit" ? "no-credit" : "nothing-to-reset",
+      outcome === "noCredit" ? "The service reports that no earned reset credit is available." : "The service reports that no eligible rate-limit window can be reset."
+    );
+  }
+  attempt = await saveState(store, attempt, "completed", { outcome, lastError: null });
+  const reconciliation = await readVerification(client, attempt, options);
+  envelope.warnings.push(...reconciliation.warnings);
+  envelope.verification = reconciliation.verification;
+  if (reconciliation.after != null) {
+    applySnapshot(envelope, reconciliation.after, { includeCredits: false });
+  }
+  applyAttempt(envelope, attempt);
+  if (outcome === "alreadyRedeemed") {
+    envelope.warnings.push(
+      "The service reports that this exact journaled attempt completed previously. Do not create a new attempt."
+    );
+  }
+  return reconciliation.verification.status === "verified" ? succeed(envelope) : completeWithWarning(envelope);
+}
+async function finalizeUnknownOutcome(client, store, envelope, attempt, error51, options) {
+  const message = safeTerminalField(error51 instanceof Error ? error51.message : String(error51), 4096);
+  try {
+    attempt = await saveState(store, attempt, "outcome-unknown", {
+      outcome: null,
+      lastError: message
+    });
+  } catch (journalError) {
+    envelope.warnings.push(
+      `The consume result is unknown and the durable journal could not be advanced: ${redactText(
+        journalError instanceof Error ? journalError.message : String(journalError)
+      )}`
+    );
+  }
+  const reconciliation = await readVerification(client, attempt, options);
+  envelope.warnings.push(...reconciliation.warnings);
+  envelope.verification = reconciliation.verification;
+  if (reconciliation.after != null) {
+    applySnapshot(envelope, reconciliation.after, { includeCredits: false });
+  }
+  if (reconciliation.verification.status === "verified") {
+    try {
+      attempt = await saveState(store, attempt, "completed", { lastError: message });
+    } catch (journalError) {
+      envelope.warnings.push(
+        `Completion was proven, but the journal could not record it: ${safeTerminalField(
+          journalError instanceof Error ? journalError.message : String(journalError),
+          1024
+        )}`
+      );
+      envelope.warnings.push(
+        `Do not create a new attempt. Finalize only with: codex-reset recover --attempt ${attempt.attemptId}`
+      );
+      applyAttempt(envelope, attempt);
+      return completeWithWarning(envelope, EXIT_CODE.journalIncomplete);
+    }
+    applyAttempt(envelope, attempt);
+    envelope.warnings.push(
+      "The consume response was unknown, but exact target and rate-limit evidence prove completion. Do not retry."
+    );
+    return succeed(envelope);
+  }
+  applyAttempt(envelope, attempt);
+  return fail(
+    envelope,
+    EXIT_CODE.outcomeUnknown,
+    "consume-outcome-unknown",
+    `The result is unknown. Do not create a new attempt. Use: codex-reset recover --attempt ${attempt.attemptId}`
+  );
+}
+async function finalizeAfterJournalFailure(client, envelope, attempt, outcome, journalError, options) {
+  const transientAttempt = { ...attempt, outcome };
+  const reconciliation = await readVerification(client, transientAttempt, options);
+  envelope.warnings.push(...reconciliation.warnings);
+  envelope.warnings.push(
+    `The server response was received, but the journal could not record it: ${redactText(
+      journalError instanceof Error ? journalError.message : String(journalError)
+    )}`
+  );
+  envelope.warnings.push(
+    `Do not create a new attempt. The durable sending record can only be handled with: codex-reset recover --attempt ${attempt.attemptId}`
+  );
+  envelope.verification = reconciliation.verification;
+  if (reconciliation.after != null) {
+    applySnapshot(envelope, reconciliation.after, { includeCredits: false });
+  }
+  applyAttempt(envelope, transientAttempt);
+  if (outcome === "reset" || outcome === "alreadyRedeemed") {
+    return completeWithWarning(envelope, EXIT_CODE.journalIncomplete);
+  }
+  return fail(
+    envelope,
+    outcome === "noCredit" ? EXIT_CODE.noCredit : EXIT_CODE.nothingToReset,
+    outcome === "noCredit" ? "no-credit" : "nothing-to-reset",
+    "The service returned a definitive non-consuming outcome, but the local journal update failed."
+  );
+}
+async function runPrepareRedemption(client, store, options) {
+  const envelope = createEnvelope("prepare");
   const account = await client.readAccount();
-  const accountError = compatibleAccountError(account);
-  envelope.account = publicAccount(account, null);
+  const accountError = redemptionIdentityError(account);
+  envelope.account = publicAccount(account, null, publicAccountFingerprint(account));
   if (accountError != null) {
     return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
   }
-  const before = await client.readRateLimits();
-  envelope.account = publicAccount(account, getPlanType(before));
-  applySnapshot(envelope, before);
+  const snapshot = await client.readRateLimits();
+  const accountWithPlan = { ...account, planType: account.planType ?? getPlanType(snapshot) };
+  envelope.account = publicAccount(
+    accountWithPlan,
+    getPlanType(snapshot),
+    publicAccountFingerprint(accountWithPlan)
+  );
+  applySnapshot(envelope, snapshot, { includeCredits: false });
+  const planError = redemptionAccountError(accountWithPlan);
+  if (planError != null) {
+    return fail(envelope, EXIT_CODE.authentication, "incompatible-account", planError);
+  }
+  if (getReportedPlanTypes(snapshot).some((plan) => plan !== accountWithPlan.planType)) {
+    return fail(
+      envelope,
+      EXIT_CODE.authentication,
+      "inconsistent-plan",
+      "The account and rate-limit buckets report inconsistent ChatGPT plans, so redemption is disabled."
+    );
+  }
   let selection;
   try {
-    selection = selectForAttempt(before, options.selector, options.idempotencyKey);
+    selection = selectCredit(snapshot, options.selector);
   } catch (error51) {
     if (error51 instanceof CreditSelectionError) {
       return selectionFailure(envelope, error51);
     }
     throw error51;
   }
-  envelope.warnings.push(...selection.warnings);
-  envelope.redemption = {
-    requestedSelector: options.selector,
-    creditId: selection.creditId,
-    selectedCredit: selection.credit,
-    idempotencyKey: null,
-    outcome: null
-  };
-  if (!await options.confirm(selection, before)) {
+  if (selection.credit == null || selection.creditId == null || selection.credit.resetType !== SUPPORTED_RESET_TYPE || selection.credit.expiresAt == null) {
+    return fail(
+      envelope,
+      EXIT_CODE.detailsUnavailable,
+      "unprovable-target",
+      "The exact credit type and expiration must be known before redemption can be prepared."
+    );
+  }
+  const observedAt = (options.now ?? Date.now)();
+  if (selection.credit.expiresAt * 1e3 <= observedAt) {
+    return fail(
+      envelope,
+      EXIT_CODE.detailsUnavailable,
+      "target-expired",
+      "The selected reset credit has already expired and cannot be prepared."
+    );
+  }
+  const attempt = createRedemptionAttempt(
+    accountWithPlan,
+    snapshot,
+    selection,
+    options.timeZone,
+    observedAt
+  );
+  await store.create(attempt);
+  applyAttempt(envelope, attempt);
+  envelope.warnings.push(
+    `Nothing was consumed. This preparation expires within five minutes and before the target credit expires; confirmation must happen in a local interactive terminal.`
+  );
+  return succeed(envelope);
+}
+async function runCommitRedemption(client, store, options) {
+  const envelope = createEnvelope("commit");
+  const now = options.now ?? Date.now;
+  let attempt;
+  try {
+    attempt = await store.read(options.attemptId);
+  } catch (error51) {
+    return attemptFailure("commit", error51);
+  }
+  applyAttempt(envelope, attempt);
+  if (attempt.state !== "prepared") {
+    return fail(
+      envelope,
+      EXIT_CODE.attempt,
+      "attempt-not-prepared",
+      `Attempt ${attempt.attemptId} is ${attempt.state}; only a prepared attempt can be committed.`
+    );
+  }
+  const account = await client.readAccount();
+  const snapshot = await client.readRateLimits();
+  envelope.account = publicAccount(
+    account,
+    getPlanType(snapshot),
+    publicAccountFingerprint(account)
+  );
+  applySnapshot(envelope, snapshot, { includeCredits: false });
+  const initialMatch = snapshotStillMatchesAttempt(attempt, account, snapshot, now());
+  if (!initialMatch.ok) {
+    attempt = await saveState(store, attempt, "stale", { lastError: initialMatch.reason });
+    applyAttempt(envelope, attempt);
+    return fail(envelope, EXIT_CODE.stale, "prepared-state-changed", initialMatch.reason);
+  }
+  const epochBeforeConfirmation = client.getAccountEpoch();
+  if (!await options.confirm(frozenClone(attempt), frozenClone(account), frozenClone(snapshot))) {
+    attempt = await saveState(store, attempt, "stale", {
+      lastError: "Local confirmation was cancelled."
+    });
+    applyAttempt(envelope, attempt);
     return fail(
       envelope,
       EXIT_CODE.cancelled,
       "confirmation-required",
-      "Redemption was cancelled or explicit confirmation was not available."
+      "Redemption was cancelled or a local interactive confirmation was unavailable."
     );
   }
-  const idempotencyKey = options.idempotencyKey ?? randomUUID();
-  envelope.redemption.idempotencyKey = idempotencyKey;
-  let outcome;
   try {
-    outcome = await client.consumeResetCredit({
-      idempotencyKey,
-      ...selection.creditId == null ? {} : { creditId: selection.creditId }
-    });
-    envelope.redemption.outcome = outcome;
-  } catch (error51) {
-    if (isAppServerError(error51) && error51.kind === "rpc") {
-      setFailedVerification(envelope, before);
-      return fail(envelope, EXIT_CODE.rejected, "consume-rejected", error51.message);
-    }
-    if (isAppServerError(error51) && error51.requestSent) {
-      envelope.verification = {
-        status: "unverified",
-        availableCountDelta: null,
-        changedWindows: [],
-        notes: ["The consume request may have reached the server; reuse this idempotency key."],
-        before: publicSnapshot(before),
-        after: null
-      };
-      return fail(
-        envelope,
-        EXIT_CODE.outcomeUnknown,
-        "consume-outcome-unknown",
-        `The redemption outcome is unknown. Retry only with idempotency key ${idempotencyKey}.`
+    return await store.withAccountLock(attempt.accountFingerprint, attempt.attemptId, async () => {
+      attempt = await store.read(attempt.attemptId);
+      if (attempt.state !== "prepared") {
+        throw new AttemptStoreError("conflict", "The prepared attempt changed before commit.");
+      }
+      const latestAccount = await client.readAccount();
+      const latestSnapshot = await client.readRateLimits();
+      envelope.account = publicAccount(
+        latestAccount,
+        getPlanType(latestSnapshot),
+        publicAccountFingerprint(latestAccount)
       );
-    }
-    throw error51;
-  }
-  if (outcome === "noCredit") {
-    setFailedVerification(envelope, before);
-    return fail(
-      envelope,
-      EXIT_CODE.noCredit,
-      "no-credit",
-      "The service reports that no earned reset credit is available."
-    );
-  }
-  if (outcome === "nothingToReset") {
-    setFailedVerification(envelope, before);
-    return fail(
-      envelope,
-      EXIT_CODE.nothingToReset,
-      "nothing-to-reset",
-      "The service reports that no eligible rate-limit window can be reset."
-    );
-  }
-  if (outcome !== "reset" && outcome !== "alreadyRedeemed") {
-    setFailedVerification(envelope, before);
-    return fail(
-      envelope,
-      EXIT_CODE.rejected,
-      "unsupported-outcome",
-      `The service returned an unsupported consume outcome: ${outcome}.`
-    );
-  }
-  const delays = options.verificationDelaysMs ?? DEFAULT_VERIFICATION_DELAYS_MS;
-  const sleep = options.sleep ?? wait;
-  let after = null;
-  let verification = verifyRedemption(outcome, before, null);
-  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
-    if (attempt > 0) {
-      const delay = delays[attempt - 1];
-      if (delay != null) {
-        await sleep(delay);
+      applySnapshot(envelope, latestSnapshot, { includeCredits: false });
+      if (client.getAccountEpoch() !== epochBeforeConfirmation) {
+        attempt = await saveState(store, attempt, "stale", {
+          lastError: "The App Server reported an account change during confirmation."
+        });
+        applyAttempt(envelope, attempt);
+        return fail(
+          envelope,
+          EXIT_CODE.stale,
+          "account-changed",
+          "The App Server reported an account change during confirmation."
+        );
       }
-    }
-    try {
-      after = await client.readRateLimits();
-      verification = verifyRedemption(outcome, before, after);
-      if (verification.status === "verified") {
-        break;
+      const latestMatch = snapshotStillMatchesAttempt(
+        attempt,
+        latestAccount,
+        latestSnapshot,
+        now()
+      );
+      if (!latestMatch.ok) {
+        attempt = await saveState(store, attempt, "stale", { lastError: latestMatch.reason });
+        applyAttempt(envelope, attempt);
+        return fail(envelope, EXIT_CODE.stale, "prepared-state-changed", latestMatch.reason);
       }
-    } catch (error51) {
-      const message = error51 instanceof Error ? error51.message : String(error51);
-      envelope.warnings.push(`Post-consume verification read failed: ${message}`);
-    }
+      attempt = await saveState(store, attempt, "sending", {
+        approvedAt: now(),
+        lastError: null
+      });
+      applyAttempt(envelope, attempt);
+      let outcome;
+      try {
+        outcome = await client.consumeResetCredit({
+          idempotencyKey: attempt.idempotencyKey,
+          creditId: attempt.target.id
+        });
+      } catch (error51) {
+        if (isAppServerError(error51) && !error51.requestSent) {
+          attempt = await saveState(store, attempt, "prepared", {
+            approvedAt: null,
+            lastError: safeTerminalField(error51.message, 4096)
+          });
+          applyAttempt(envelope, attempt);
+          return fail(
+            envelope,
+            EXIT_CODE.appServer,
+            `app-server-${error51.kind}`,
+            "The consume request was not sent. Re-run commit and confirm again."
+          );
+        }
+        return await finalizeUnknownOutcome(client, store, envelope, attempt, error51, {
+          verificationDelaysMs: options.verificationDelaysMs,
+          sleep: options.sleep,
+          now
+        });
+      }
+      try {
+        return await finalizeKnownOutcome(client, store, envelope, attempt, outcome, {
+          verificationDelaysMs: options.verificationDelaysMs,
+          sleep: options.sleep,
+          now
+        });
+      } catch (journalError) {
+        return finalizeAfterJournalFailure(client, envelope, attempt, outcome, journalError, {
+          verificationDelaysMs: options.verificationDelaysMs,
+          sleep: options.sleep,
+          now
+        });
+      }
+    });
+  } catch (error51) {
+    return attemptFailure("commit", error51);
   }
-  if (after != null) {
-    applySnapshot(envelope, after);
+}
+async function runRecoverRedemption(client, store, options) {
+  const envelope = createEnvelope("recover");
+  const now = options.now ?? Date.now;
+  let attempt;
+  try {
+    attempt = await store.read(options.attemptId);
+  } catch (error51) {
+    return attemptFailure("recover", error51);
   }
-  envelope.verification = {
-    ...verification,
-    before: publicSnapshot(before),
-    after: after == null ? null : publicSnapshot(after)
-  };
-  if (verification.status === "verified") {
+  applyAttempt(envelope, attempt);
+  if (attempt.state === "completed") {
+    envelope.warnings.push("This attempt is already completed. No consume request was sent.");
+    return completeWithWarning(envelope);
+  }
+  if (attempt.state !== "sending" && attempt.state !== "outcome-unknown") {
+    return fail(
+      envelope,
+      EXIT_CODE.attempt,
+      "attempt-not-recoverable",
+      `Attempt ${attempt.attemptId} is ${attempt.state}; recovery is only allowed after an uncertain send.`
+    );
+  }
+  const account = await client.readAccount();
+  const accountError = redemptionIdentityError(account);
+  envelope.account = publicAccount(account, null, publicAccountFingerprint(account));
+  if (accountError != null || accountFingerprint(account) !== attempt.accountFingerprint) {
+    return fail(
+      envelope,
+      EXIT_CODE.authentication,
+      "recovery-account-mismatch",
+      accountError ?? "The active ChatGPT account does not match the journaled attempt."
+    );
+  }
+  const beforeReplay = await readVerification(client, attempt, {
+    verificationDelaysMs: [],
+    now
+  });
+  envelope.verification = beforeReplay.verification;
+  envelope.warnings.push(...beforeReplay.warnings);
+  if (beforeReplay.verification.status === "verified") {
+    attempt = await saveState(store, attempt, "completed", {
+      lastError: "Completion was proven by read-only recovery."
+    });
+    applyAttempt(envelope, attempt);
+    envelope.warnings.push(
+      "Read-only reconciliation proved completion. No consume request was sent."
+    );
     return succeed(envelope);
   }
-  return fail(
-    envelope,
-    EXIT_CODE.verificationIncomplete,
-    "verification-incomplete",
-    `The service returned ${outcome}, but the reset could not be fully verified from snapshots.`
-  );
+  if (now() - attempt.createdAt >= RECOVERY_ATTEMPT_TTL_MS) {
+    const epochBeforeClosure = client.getAccountEpoch();
+    if (options.confirmCloseUnknown == null || !await options.confirmCloseUnknown(
+      frozenClone(attempt),
+      frozenClone(account),
+      frozenClone(beforeReplay.verification)
+    )) {
+      return fail(
+        envelope,
+        EXIT_CODE.attempt,
+        "recovery-expired",
+        "Read-only reconciliation could not prove this attempt, and it is at least 24 hours old. Replay is disabled; closing the unknown result requires a separate local confirmation."
+      );
+    }
+    try {
+      return await store.withAccountLock(
+        attempt.accountFingerprint,
+        attempt.attemptId,
+        async () => {
+          attempt = await store.read(attempt.attemptId);
+          if (attempt.state !== "sending" && attempt.state !== "outcome-unknown") {
+            throw new AttemptStoreError("conflict", "The attempt changed before unknown closure.");
+          }
+          const latestAccount = await client.readAccount();
+          if (!accountMatchesAttempt(latestAccount, attempt) || client.getAccountEpoch() !== epochBeforeClosure) {
+            return fail(
+              envelope,
+              EXIT_CODE.authentication,
+              "recovery-account-mismatch",
+              "The active ChatGPT account changed before the unknown attempt could be closed."
+            );
+          }
+          const finalReadOnlyCheck = await readVerification(client, attempt, {
+            verificationDelaysMs: [],
+            now
+          });
+          envelope.verification = finalReadOnlyCheck.verification;
+          envelope.warnings.push(...finalReadOnlyCheck.warnings);
+          const closingAccount = await client.readAccount();
+          if (!accountMatchesAttempt(closingAccount, attempt) || client.getAccountEpoch() !== epochBeforeClosure) {
+            return fail(
+              envelope,
+              EXIT_CODE.authentication,
+              "recovery-account-mismatch",
+              "The active ChatGPT account changed during the final read-only closure check."
+            );
+          }
+          if (finalReadOnlyCheck.verification.status === "verified") {
+            attempt = await saveState(store, attempt, "completed", {
+              lastError: "Completion was proven before unknown closure."
+            });
+            applyAttempt(envelope, attempt);
+            envelope.warnings.push(
+              "The final read-only check proved completion. The unknown attempt was not closed and no request was sent."
+            );
+            return succeed(envelope);
+          }
+          attempt = await saveState(store, attempt, "closed-unknown", {
+            outcome: null,
+            lastError: "The user deliberately closed an unprovable attempt after the replay deadline."
+          });
+          applyAttempt(envelope, attempt);
+          envelope.warnings.push(
+            "The old outcome remains unknown. Same-key replay is permanently disabled, no request was sent, and future attempts may proceed only because you explicitly closed this journal."
+          );
+          return completeWithWarning(envelope, EXIT_CODE.unknownClosed);
+        }
+      );
+    } catch (error51) {
+      return attemptFailure("recover", error51);
+    }
+  }
+  const epochBeforeConfirmation = client.getAccountEpoch();
+  if (beforeReplay.bindingError != null) {
+    return fail(
+      envelope,
+      EXIT_CODE.authentication,
+      "recovery-plan-mismatch",
+      beforeReplay.bindingError
+    );
+  }
+  if (!await options.confirm(frozenClone(attempt), frozenClone(account))) {
+    return fail(
+      envelope,
+      EXIT_CODE.cancelled,
+      "recovery-confirmation-required",
+      "Recovery was cancelled. No consume request was sent."
+    );
+  }
+  try {
+    return await store.withAccountLock(attempt.accountFingerprint, attempt.attemptId, async () => {
+      attempt = await store.read(attempt.attemptId);
+      if (attempt.state !== "sending" && attempt.state !== "outcome-unknown") {
+        throw new AttemptStoreError("conflict", "The attempt changed before recovery.");
+      }
+      const latestAccount = await client.readAccount();
+      if (redemptionAccountError(latestAccount) != null || accountFingerprint(latestAccount) !== attempt.accountFingerprint || client.getAccountEpoch() !== epochBeforeConfirmation) {
+        return fail(
+          envelope,
+          EXIT_CODE.authentication,
+          "recovery-account-mismatch",
+          "The active ChatGPT account changed before recovery could replay the exact request."
+        );
+      }
+      const finalReadOnlyCheck = await readVerification(client, attempt, {
+        verificationDelaysMs: [],
+        now
+      });
+      if (finalReadOnlyCheck.bindingError != null) {
+        envelope.verification = finalReadOnlyCheck.verification;
+        envelope.warnings.push(...finalReadOnlyCheck.warnings);
+        return fail(
+          envelope,
+          EXIT_CODE.authentication,
+          "recovery-plan-mismatch",
+          finalReadOnlyCheck.bindingError
+        );
+      }
+      if (finalReadOnlyCheck.verification.status === "verified") {
+        attempt = await saveState(store, attempt, "completed", {
+          lastError: "Completion was proven immediately before recovery replay."
+        });
+        envelope.verification = finalReadOnlyCheck.verification;
+        applyAttempt(envelope, attempt);
+        envelope.warnings.push(
+          "A final read-only check proved completion. No consume request was sent."
+        );
+        return succeed(envelope);
+      }
+      attempt = await saveState(store, attempt, "sending", { lastError: null });
+      applyAttempt(envelope, attempt);
+      let outcome;
+      try {
+        outcome = await client.consumeResetCredit({
+          idempotencyKey: attempt.idempotencyKey,
+          creditId: attempt.target.id
+        });
+      } catch (error51) {
+        return await finalizeUnknownOutcome(client, store, envelope, attempt, error51, {
+          verificationDelaysMs: options.verificationDelaysMs,
+          sleep: options.sleep,
+          now
+        });
+      }
+      try {
+        return await finalizeKnownOutcome(client, store, envelope, attempt, outcome, {
+          verificationDelaysMs: options.verificationDelaysMs,
+          sleep: options.sleep,
+          now
+        });
+      } catch (journalError) {
+        return finalizeAfterJournalFailure(client, envelope, attempt, outcome, journalError, {
+          verificationDelaysMs: options.verificationDelaysMs,
+          sleep: options.sleep,
+          now
+        });
+      }
+    });
+  } catch (error51) {
+    return attemptFailure("recover", error51);
+  }
+}
+async function runRedeem(client, store, options) {
+  const prepared = await runPrepareRedemption(client, store, options);
+  const attemptId = prepared.envelope.redemption?.attemptId;
+  if (prepared.exitCode !== EXIT_CODE.success || attemptId == null) {
+    prepared.envelope.command = "redeem";
+    return prepared;
+  }
+  const committed = await runCommitRedemption(client, store, {
+    attemptId,
+    confirm: options.confirm,
+    ...options.verificationDelaysMs === void 0 ? {} : { verificationDelaysMs: options.verificationDelaysMs },
+    ...options.sleep === void 0 ? {} : { sleep: options.sleep },
+    ...options.now === void 0 ? {} : { now: options.now }
+  });
+  committed.envelope.command = "redeem";
+  return committed;
 }
 
 // src/cli-options.ts
@@ -16108,7 +17645,7 @@ var CliArgumentError = class extends Error {
     this.name = "CliArgumentError";
   }
 };
-var UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+var UUID_PATTERN2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function parseTimeout(value) {
   if (value === void 0) {
     return 15e3;
@@ -16122,62 +17659,11 @@ function parseTimeout(value) {
   }
   return timeoutMs;
 }
-function parseCliArgs(args, environment = process.env) {
-  let parsed;
-  try {
-    parsed = parseArgs({
-      args,
-      allowPositionals: true,
-      strict: true,
-      options: {
-        json: { type: "boolean" },
-        yes: { type: "boolean" },
-        help: { type: "boolean", short: "h" },
-        "credit-id": { type: "string" },
-        earliest: { type: "boolean" },
-        "expires-on": { type: "string" },
-        timezone: { type: "string" },
-        next: { type: "boolean" },
-        "codex-bin": { type: "string" },
-        timeout: { type: "string" },
-        "idempotency-key": { type: "string" }
-      }
-    });
-  } catch (error51) {
-    throw new CliArgumentError(error51 instanceof Error ? error51.message : String(error51));
-  }
-  const values = parsed.values;
-  const command = parsed.positionals[0] ?? "help";
-  if (parsed.positionals.length > 1) {
-    throw new CliArgumentError("Only one subcommand is allowed.");
-  }
-  if (!(/* @__PURE__ */ new Set(["help", "list", "doctor", "redeem"])).has(command)) {
-    throw new CliArgumentError(`Unknown command: ${command}.`);
-  }
-  const timeZone = values.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
-  if (!validateTimeZone(timeZone)) {
-    throw new CliArgumentError(`Invalid IANA time zone: ${timeZone}.`);
-  }
-  const common = {
-    json: values.json ?? false,
-    codexBin: values["codex-bin"] ?? environment.CODEX_BIN ?? "codex",
-    timeoutMs: parseTimeout(values.timeout),
-    timeZone
-  };
-  if (values.help === true || command === "help") {
-    return { command: "help", common };
-  }
-  if (command === "list" || command === "doctor") {
-    const hasRedemptionOption = values.yes === true || values["credit-id"] !== void 0 || values.earliest === true || values["expires-on"] !== void 0 || values.next === true || values["idempotency-key"] !== void 0;
-    if (hasRedemptionOption) {
-      throw new CliArgumentError(`Redemption options are not valid for ${command}.`);
-    }
-    return { command, common };
-  }
+function parseSelector(values, timeZone) {
   const selectors = [];
   if (values["credit-id"] !== void 0) {
-    if (values["credit-id"].length === 0) {
-      throw new CliArgumentError("--credit-id cannot be empty.");
+    if (values["credit-id"].length === 0 || hasControlCharacters(values["credit-id"])) {
+      throw new CliArgumentError("--credit-id is empty or contains control characters.");
     }
     selectors.push({ kind: "id", id: values["credit-id"] });
   }
@@ -16188,59 +17674,107 @@ function parseCliArgs(args, environment = process.env) {
     if (!validateCalendarDate(values["expires-on"])) {
       throw new CliArgumentError("--expires-on must be a real date in YYYY-MM-DD form.");
     }
-    selectors.push({
-      kind: "expires-on",
-      date: values["expires-on"],
-      timeZone
-    });
-  }
-  if (values.next === true) {
-    selectors.push({ kind: "next" });
+    selectors.push({ kind: "expires-on", date: values["expires-on"], timeZone });
   }
   if (selectors.length !== 1) {
     throw new CliArgumentError(
-      "redeem requires exactly one of --credit-id, --earliest, --expires-on, or --next."
+      "prepare and redeem require exactly one of --credit-id, --earliest, or --expires-on."
     );
   }
-  const idempotencyKey = values["idempotency-key"];
-  if (idempotencyKey !== void 0 && !UUID_PATTERN.test(idempotencyKey)) {
-    throw new CliArgumentError("--idempotency-key must be a valid UUID.");
+  return selectors[0];
+}
+function parseCliArgs(args, environment = process.env) {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      allowPositionals: true,
+      strict: true,
+      options: {
+        json: { type: "boolean" },
+        verbose: { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+        "credit-id": { type: "string" },
+        earliest: { type: "boolean" },
+        "expires-on": { type: "string" },
+        timezone: { type: "string" },
+        attempt: { type: "string" },
+        "codex-bin": { type: "string" },
+        timeout: { type: "string" }
+      }
+    });
+  } catch (error51) {
+    throw new CliArgumentError(error51 instanceof Error ? error51.message : String(error51));
   }
-  const selector = selectors[0];
-  if (idempotencyKey !== void 0 && selector.kind !== "id" && selector.kind !== "next") {
-    throw new CliArgumentError(
-      "Idempotent recovery requires --credit-id with the previously printed ID, or --next if the original request used --next."
-    );
+  const values = parsed.values;
+  const command = parsed.positionals[0] ?? "help";
+  if (parsed.positionals.length > 1) {
+    throw new CliArgumentError("Only one subcommand is allowed.");
   }
-  return {
-    command: "redeem",
-    common,
-    selector,
-    yes: values.yes ?? false,
-    ...idempotencyKey === void 0 ? {} : { idempotencyKey }
+  if (!(/* @__PURE__ */ new Set(["help", "list", "doctor", "prepare", "redeem", "commit", "recover"])).has(command)) {
+    throw new CliArgumentError(`Unknown command: ${command}.`);
+  }
+  const timeZone = values.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
+  if (!validateTimeZone(timeZone)) {
+    throw new CliArgumentError(`Invalid IANA time zone: ${timeZone}.`);
+  }
+  const common = {
+    json: values.json ?? false,
+    verbose: values.verbose ?? false,
+    codexBin: values["codex-bin"] ?? environment.CODEX_BIN ?? "codex",
+    timeoutMs: parseTimeout(values.timeout),
+    timeZone
   };
+  if (values.help === true || command === "help") {
+    return { command: "help", common };
+  }
+  const hasSelector = values["credit-id"] !== void 0 || values.earliest === true || values["expires-on"] !== void 0;
+  if (command === "list" || command === "doctor") {
+    if (hasSelector || values.attempt !== void 0) {
+      throw new CliArgumentError(`Selection and attempt options are not valid for ${command}.`);
+    }
+    return { command, common };
+  }
+  if (command === "prepare" || command === "redeem") {
+    if (values.attempt !== void 0) {
+      throw new CliArgumentError(`--attempt is not valid for ${command}.`);
+    }
+    return { command, common, selector: parseSelector(values, timeZone) };
+  }
+  if (hasSelector || values.timezone !== void 0) {
+    throw new CliArgumentError(`Selectors and --timezone are not valid for ${command}.`);
+  }
+  if (values.attempt == null || !UUID_PATTERN2.test(values.attempt)) {
+    throw new CliArgumentError(
+      `${command} requires --attempt with a valid journaled attempt UUID.`
+    );
+  }
+  return { command, common, attemptId: values.attempt };
 }
 var HELP_TEXT = `Codex Reset Kit
 
-Safely inspect and redeem earned Codex rate-limit resets.
+Inspect earned Codex reset credits and redeem one through a bound local confirmation.
 
 Usage:
   codex-reset list [--json]
   codex-reset doctor [--json]
-  codex-reset redeem --credit-id <id> [--yes] [--json]
-  codex-reset redeem --earliest [--yes] [--json]
-  codex-reset redeem --expires-on <YYYY-MM-DD> [--timezone <iana>] [--yes] [--json]
-  codex-reset redeem --next [--yes] [--json]
+  codex-reset prepare --credit-id <id> [--json]
+  codex-reset prepare --earliest [--json]
+  codex-reset prepare --expires-on <YYYY-MM-DD> [--timezone <iana>] [--json]
+  codex-reset redeem <same selector options>
+  codex-reset commit --attempt <uuid>
+  codex-reset recover --attempt <uuid>
 
 Common options:
-  --codex-bin <path>        Codex executable (or set CODEX_BIN)
-  --timeout <ms>            Request timeout, 1000-120000 (default: 15000)
-  --json                    Print a stable JSON envelope
-  --idempotency-key <uuid>  Resume the same logical redemption attempt
+  --codex-bin <path>  Codex executable (or set CODEX_BIN)
+  --timeout <ms>      Request timeout, 1000-120000 (default: 15000)
+  --json              Print a stable JSON envelope
+  --verbose           Print sanitized App Server diagnostics to stderr
 
 Safety:
-  list and doctor never consume a reset. redeem requires one explicit selector and
-  interactive confirmation; --yes is only for a caller that already obtained explicit consent.
+  list, doctor, and prepare never consume a reset. commit, redeem, and recover require
+  a local interactive terminal. There is no --yes option and no caller-supplied idempotency key.
+  An old unknown attempt can be closed only by a separate local phrase after replay expires.
 `;
 
 // src/presentation/json.ts
@@ -16250,31 +17784,38 @@ function renderJson(envelope) {
 
 // src/presentation/terminal.ts
 import { createInterface as createInterface2 } from "node:readline/promises";
-function formatTimestamp(epochSeconds, timeZone) {
-  if (epochSeconds == null) {
+function formatTimestamp(epochSeconds2, timeZone) {
+  if (epochSeconds2 == null) {
     return "unknown";
   }
   return `${new Intl.DateTimeFormat(void 0, {
     timeZone,
     dateStyle: "medium",
     timeStyle: "long"
-  }).format(new Date(epochSeconds * 1e3))} (${epochSeconds})`;
+  }).format(
+    new Date(epochSeconds2 * 1e3)
+  )} [${safeTerminalField(timeZone)}; unix ${epochSeconds2}]`;
 }
 function renderSnapshot(snapshot, timeZone) {
   const lines = [
     `Reset credits: ${snapshot.resetCredits.availableCount} (${snapshot.resetCredits.detailsState})`
   ];
   for (const credit of snapshot.resetCredits.credits) {
-    lines.push(`  - ${credit.id}`);
-    lines.push(`    status: ${credit.status}`);
+    lines.push(`  - ${safeTerminalField(credit.id)}`);
+    lines.push(`    status: ${safeTerminalField(credit.status)}`);
+    lines.push(`    type: ${safeTerminalField(credit.resetType ?? "unknown")}`);
     lines.push(`    expires: ${formatTimestamp(credit.expiresAt, timeZone)}`);
   }
   for (const [id, bucket] of Object.entries(snapshot.rateLimits.byLimitId)) {
-    const primary = bucket.primary;
-    if (primary != null) {
-      lines.push(
-        `Rate limit ${id}: ${String(primary.usedPercent)}% used; resets ${formatTimestamp(primary.resetsAt, timeZone)}`
-      );
+    for (const [windowName, window] of [
+      ["primary", bucket.primary],
+      ["secondary", bucket.secondary]
+    ]) {
+      if (window != null) {
+        lines.push(
+          `Rate limit ${safeTerminalField(id)}:${windowName}: ${String(window.usedPercent)}% used; resets ${formatTimestamp(window.resetsAt, timeZone)}`
+        );
+      }
     }
   }
   if (Object.keys(snapshot.rateLimits.byLimitId).length === 0 && snapshot.rateLimits.current?.primary != null) {
@@ -16284,7 +17825,7 @@ function renderSnapshot(snapshot, timeZone) {
       return lines;
     }
     lines.push(
-      `Rate limit ${bucket.limitId ?? "default"}: ${String(primary.usedPercent)}% used; resets ${formatTimestamp(primary.resetsAt, timeZone)}`
+      `Rate limit ${safeTerminalField(bucket.limitId ?? "default")}: ${String(primary.usedPercent)}% used; resets ${formatTimestamp(primary.resetsAt, timeZone)}`
     );
   }
   return lines;
@@ -16292,8 +17833,9 @@ function renderSnapshot(snapshot, timeZone) {
 function renderTerminal(envelope, timeZone) {
   const lines = [];
   if (envelope.account != null) {
+    const fingerprint = envelope.account.fingerprint == null ? "unavailable" : envelope.account.fingerprint;
     lines.push(
-      `Account: ${envelope.account.type ?? "unknown"}${envelope.account.planType == null ? "" : ` (${envelope.account.planType})`}`
+      `Account: ${safeTerminalField(envelope.account.type ?? "unknown")}${envelope.account.planType == null ? "" : ` (${safeTerminalField(envelope.account.planType)})`}; fingerprint ${safeTerminalField(fingerprint)}`
     );
   }
   if (envelope.rateLimits != null && envelope.resetCredits != null) {
@@ -16305,42 +17847,183 @@ function renderTerminal(envelope, timeZone) {
     );
   }
   for (const check2 of envelope.diagnostics) {
-    lines.push(`${check2.ok ? "OK" : "WARN"} ${check2.name}: ${check2.message}`);
+    lines.push(
+      `${check2.ok ? "OK" : "WARN"} ${safeTerminalField(check2.name)}: ${safeTerminalField(check2.message, 1024)}`
+    );
   }
   if (envelope.redemption != null) {
-    lines.push(`Selector: ${JSON.stringify(envelope.redemption.requestedSelector)}`);
-    lines.push(`Credit ID: ${envelope.redemption.creditId ?? "service-selected"}`);
-    if (envelope.redemption.idempotencyKey != null) {
-      lines.push(`Idempotency key: ${envelope.redemption.idempotencyKey}`);
-    }
+    lines.push(`Attempt: ${safeTerminalField(envelope.redemption.attemptId)}`);
+    lines.push(`Attempt state: ${envelope.redemption.state}`);
+    lines.push(
+      `Selector: ${safeTerminalField(JSON.stringify(envelope.redemption.requestedSelector))}`
+    );
+    lines.push(`Credit ID: ${safeTerminalField(envelope.redemption.creditId)}`);
+    lines.push(
+      `Credit expires: ${formatTimestamp(
+        envelope.redemption.selectedCredit.expiresAt,
+        envelope.redemption.timeZone
+      )}`
+    );
+    lines.push(
+      `Confirmation deadline: ${formatTimestamp(
+        envelope.redemption.confirmationExpiresAt,
+        envelope.redemption.timeZone
+      )}`
+    );
     if (envelope.redemption.outcome != null) {
-      lines.push(`Consume outcome: ${envelope.redemption.outcome}`);
+      lines.push(`Consume outcome: ${safeTerminalField(envelope.redemption.outcome)}`);
+    }
+    if (envelope.redemption.recoveryCommand != null) {
+      lines.push(`Recovery: ${safeTerminalField(envelope.redemption.recoveryCommand)}`);
     }
   }
   if (envelope.verification != null) {
     lines.push(`Verification: ${envelope.verification.status}`);
-    lines.push(...envelope.verification.notes.map((note) => `  ${note}`));
+    lines.push(`Available count delta: ${String(envelope.verification.availableCountDelta)}`);
+    lines.push(
+      `Exact target still available: ${String(envelope.verification.targetAvailableAfter)}`
+    );
+    lines.push(
+      `Natural rollover possible: ${String(envelope.verification.naturalRolloverPossible)}`
+    );
+    for (const window of envelope.verification.changedWindows) {
+      lines.push(`Changed window: ${safeTerminalField(window)}`);
+    }
+    lines.push(...envelope.verification.notes.map((note) => `  ${safeTerminalField(note, 1024)}`));
   }
-  lines.push(...envelope.warnings.map((warning) => `Warning: ${warning}`));
+  lines.push(
+    ...envelope.warnings.map((warning) => `Warning: ${safeTerminalField(warning, 1024)}`)
+  );
   if (envelope.error != null) {
-    lines.push(`Error [${envelope.error.code}]: ${envelope.error.message}`);
+    lines.push(
+      `Error [${safeTerminalField(envelope.error.code)}]: ${safeTerminalField(envelope.error.message, 1024)}`
+    );
     for (const candidate of envelope.error.candidates) {
-      lines.push(`  candidate: ${candidate.id}`);
+      lines.push(`  candidate: ${safeTerminalField(candidate.id)}`);
     }
   }
   return redactText(lines.join("\n"));
 }
-async function confirmRedemption(selection, _before, timeZone) {
-  if (!process.stdin.isTTY) {
+function writeConfirmationSnapshot(attempt, account, snapshot) {
+  const maskedEmail = maskAccountEmail(account) ?? "unavailable";
+  process.stderr.write("\nIrreversible reset-credit redemption\n");
+  process.stderr.write(`Account: ${safeTerminalField(maskedEmail)}
+`);
+  process.stderr.write(`Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}
+`);
+  process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}
+`);
+  process.stderr.write(`Available credits: ${snapshot.resetCredits.availableCount}
+`);
+  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}
+`);
+  process.stderr.write(`Credit type: ${attempt.target.resetType}
+`);
+  process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}
+`);
+  for (const [bucketId, bucket] of getRateLimitBuckets(snapshot)) {
+    for (const [name, window] of [
+      ["primary", bucket.primary],
+      ["secondary", bucket.secondary]
+    ]) {
+      if (window != null) {
+        process.stderr.write(
+          `Window ${safeTerminalField(bucketId)}:${name}: ${String(window.usedPercent)}% used; resets ${formatTimestamp(window.resetsAt, attempt.timeZone)}
+`
+        );
+      }
+    }
+  }
+  process.stderr.write(
+    "The account and full safety snapshot will be checked again after confirmation.\n"
+  );
+}
+async function confirmPreparedRedemption(attempt, account, snapshot) {
+  if (!process.stdin.isTTY || !process.stderr.isTTY) {
     return false;
   }
-  const target = selection.credit != null ? `${selection.credit.id}, expiring ${formatTimestamp(selection.credit.expiresAt, timeZone)}` : selection.creditId != null ? `credit ID ${selection.creditId} (current details cannot re-prove it)` : "the next service-selected reset credit (expiration cannot be proven)";
-  process.stderr.write(`About to irreversibly redeem ${target}.
-`);
+  writeConfirmationSnapshot(
+    attempt,
+    account,
+    snapshot
+  );
+  const expected = confirmationChallenge(attempt);
   const reader = createInterface2({ input: process.stdin, output: process.stderr });
   try {
-    const answer = await reader.question("Type REDEEM to continue: ");
-    return answer === "REDEEM";
+    const answer = await reader.question(`Type ${expected} to continue: `);
+    return answer === expected;
+  } finally {
+    reader.close();
+  }
+}
+async function confirmRecovery(attempt, account) {
+  if (!process.stdin.isTTY || !process.stderr.isTTY) {
+    return false;
+  }
+  const expected = `RECOVER ${attempt.attemptId.slice(0, 8).toUpperCase()}`;
+  process.stderr.write("\nIrreversible reset-credit recovery\n");
+  process.stderr.write(`Attempt: ${safeTerminalField(attempt.attemptId)} (${attempt.state})
+`);
+  process.stderr.write(
+    `Account: ${safeTerminalField(maskAccountEmail(account) ?? "unavailable")}
+`
+  );
+  process.stderr.write(`Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}
+`);
+  process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}
+`);
+  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}
+`);
+  process.stderr.write(`Credit type: ${attempt.target.resetType}
+`);
+  process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}
+`);
+  process.stderr.write(
+    "This attempt may already have completed. Recovery first reconciles read-only, then may resend only the same journaled key and exact credit ID; it never creates a new logical attempt.\n"
+  );
+  const reader = createInterface2({ input: process.stdin, output: process.stderr });
+  try {
+    const answer = await reader.question(
+      `Type ${expected} to reconcile/replay this exact attempt: `
+    );
+    return answer === expected;
+  } finally {
+    reader.close();
+  }
+}
+async function confirmCloseUnknown(attempt, account, verification) {
+  if (!process.stdin.isTTY || !process.stderr.isTTY) {
+    return false;
+  }
+  const expected = `CLOSE UNKNOWN ${attempt.attemptId.slice(0, 8).toUpperCase()}`;
+  process.stderr.write("\nClose an unprovable reset-credit attempt\n");
+  process.stderr.write(`Attempt: ${safeTerminalField(attempt.attemptId)} (${attempt.state})
+`);
+  process.stderr.write(
+    `Account: ${safeTerminalField(maskAccountEmail(account) ?? "unavailable")}
+`
+  );
+  process.stderr.write(`Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}
+`);
+  process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}
+`);
+  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}
+`);
+  process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}
+`);
+  process.stderr.write(`Current proof: ${verification.status}
+`);
+  for (const note of verification.notes) {
+    process.stderr.write(`  ${safeTerminalField(note, 1024)}
+`);
+  }
+  process.stderr.write(
+    "This sends nothing and does not decide whether the old request completed. It permanently disables replay of this attempt and allows future attempts to proceed.\n"
+  );
+  const reader = createInterface2({ input: process.stdin, output: process.stderr });
+  try {
+    const answer = await reader.question(`Type ${expected} to close the unknown journal: `);
+    return answer === expected;
   } finally {
     reader.close();
   }
@@ -16358,19 +18041,22 @@ function renderExecution(execution, command, stdout, stderr) {
     return;
   }
   const rendered = renderTerminal(execution.envelope, command.common.timeZone);
-  const target = execution.exitCode === 0 ? stdout : stderr;
+  const target = execution.envelope.ok ? stdout : stderr;
   if (rendered.length > 0) {
     target.write(`${rendered}
 `);
   }
 }
-function connectionFailure(command, error51) {
+function executionFailure(command, error51) {
   const envelope = createEnvelope(commandName(command));
   const message = redactText(error51 instanceof Error ? error51.message : String(error51));
+  if (error51 instanceof AttemptStoreError) {
+    return fail(envelope, EXIT_CODE.attempt, `attempt-${error51.code}`, message);
+  }
   return fail(
     envelope,
     EXIT_CODE.appServer,
-    isAppServerError(error51) ? `app-server-${error51.kind}` : "app-server-error",
+    isAppServerError(error51) ? `app-server-${error51.kind}` : "application-error",
     message
   );
 }
@@ -16384,7 +18070,8 @@ async function runCli(args, dependencies = {}) {
     const message = redactText(error51 instanceof CliArgumentError ? error51.message : String(error51));
     if (args.includes("--json")) {
       const requested = args[0];
-      const name = requested === "list" || requested === "doctor" || requested === "redeem" ? requested : "doctor";
+      const supported = /* @__PURE__ */ new Set(["list", "doctor", "prepare", "redeem", "commit", "recover"]);
+      const name = supported.has(requested ?? "") ? requested : "doctor";
       const execution = fail(
         createEnvelope(name),
         EXIT_CODE.arguments,
@@ -16404,31 +18091,64 @@ ${HELP_TEXT}`);
     stdout.write(HELP_TEXT);
     return EXIT_CODE.success;
   }
+  const store = dependencies.store ?? (command.command === "list" || command.command === "doctor" ? null : new FileRedemptionAttemptStore());
   let client = null;
   try {
     client = dependencies.connect == null ? await connectAppServer({
       command: command.common.codexBin,
       timeoutMs: command.common.timeoutMs,
       clientVersion: VERSION,
-      onDiagnostic: (message) => stderr.write(`[codex app-server] ${message}
+      ...command.common.verbose ? {
+        onDiagnostic: (message) => stderr.write(`[codex app-server] ${message}
 `)
+      } : {}
     }) : await dependencies.connect(command);
     let execution;
     if (command.command === "list") {
       execution = await runList(client);
     } else if (command.command === "doctor") {
       execution = await runDoctor(client);
-    } else {
-      execution = await runRedeem(client, {
+    } else if (command.command === "prepare") {
+      if (store == null) {
+        throw new Error("The prepare command requires a redemption journal store.");
+      }
+      execution = await runPrepareRedemption(client, store, {
         selector: command.selector,
-        ...command.idempotencyKey === void 0 ? {} : { idempotencyKey: command.idempotencyKey },
-        confirm: command.yes ? async () => true : (selection, before) => confirmRedemption(selection, before, command.common.timeZone)
+        timeZone: command.common.timeZone
       });
+    } else if (command.command === "redeem") {
+      if (store == null) {
+        throw new Error("The redeem command requires a redemption journal store.");
+      }
+      execution = await runRedeem(client, store, {
+        selector: command.selector,
+        timeZone: command.common.timeZone,
+        confirm: dependencies.confirmPrepared ?? confirmPreparedRedemption
+      });
+    } else if (command.command === "commit") {
+      if (store == null) {
+        throw new Error("The commit command requires a redemption journal store.");
+      }
+      execution = await runCommitRedemption(client, store, {
+        attemptId: command.attemptId,
+        confirm: dependencies.confirmPrepared ?? confirmPreparedRedemption
+      });
+    } else if (command.command === "recover") {
+      if (store == null) {
+        throw new Error("The recover command requires a redemption journal store.");
+      }
+      execution = await runRecoverRedemption(client, store, {
+        attemptId: command.attemptId,
+        confirm: dependencies.confirmRecovery ?? confirmRecovery,
+        confirmCloseUnknown: dependencies.confirmCloseUnknown ?? confirmCloseUnknown
+      });
+    } else {
+      throw new Error(`Unhandled command: ${String(command.command)}`);
     }
     renderExecution(execution, command, stdout, stderr);
     return execution.exitCode;
   } catch (error51) {
-    const execution = connectionFailure(command, error51);
+    const execution = executionFailure(command, error51);
     renderExecution(execution, command, stdout, stderr);
     return execution.exitCode;
   } finally {

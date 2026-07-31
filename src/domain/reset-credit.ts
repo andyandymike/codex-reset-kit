@@ -1,4 +1,11 @@
-export type ResetCreditDetailsState = "available" | "partial" | "unavailable" | "empty";
+export const SUPPORTED_RESET_TYPE = "codexRateLimits";
+
+export type ResetCreditDetailsState =
+  | "available"
+  | "partial"
+  | "inconsistent"
+  | "unavailable"
+  | "empty";
 
 export interface ResetCredit {
   id: string;
@@ -43,12 +50,28 @@ export function createResetCreditsSnapshot(
     };
   }
 
-  const detailsState: ResetCreditDetailsState =
-    value.availableCount === 0 && value.credits.length === 0
-      ? "empty"
-      : value.credits.length < value.availableCount
-        ? "partial"
-        : "available";
+  const ids = value.credits.map((credit) => credit.id);
+  const hasDuplicateId = new Set(ids).size !== ids.length;
+  const hasUnknownStatus = value.credits.some(
+    (credit) => !new Set(["available", "redeeming", "redeemed"]).has(credit.status),
+  );
+  const statusAvailable = value.credits.filter((credit) => credit.status === "available");
+  const hasUnsupportedAvailableType = statusAvailable.some(
+    (credit) => credit.resetType !== SUPPORTED_RESET_TYPE,
+  );
+
+  let detailsState: ResetCreditDetailsState;
+  if (hasDuplicateId || hasUnknownStatus || hasUnsupportedAvailableType) {
+    detailsState = "inconsistent";
+  } else if (statusAvailable.length < value.availableCount) {
+    detailsState = "partial";
+  } else if (statusAvailable.length > value.availableCount) {
+    detailsState = "inconsistent";
+  } else if (value.availableCount === 0) {
+    detailsState = "empty";
+  } else {
+    detailsState = "available";
+  }
 
   return {
     availableCount: value.availableCount,
@@ -59,5 +82,5 @@ export function createResetCreditsSnapshot(
 }
 
 export function isAvailableCredit(credit: ResetCredit): boolean {
-  return credit.status === "available";
+  return credit.status === "available" && credit.resetType === SUPPORTED_RESET_TYPE;
 }

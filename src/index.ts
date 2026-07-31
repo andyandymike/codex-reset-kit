@@ -1,8 +1,6 @@
-export { type CodexAppServerClient, connectAppServer } from "./app-server/client.js";
-export { runDoctor } from "./application/doctor.js";
-export { runList } from "./application/list.js";
+// The package's public library surface is intentionally read-only/pure. Real redemption is
+// available only through the local interactive CLI, which owns confirmation and attempt journals.
 export { type CommandEnvelope, type CommandExecution, EXIT_CODE } from "./application/output.js";
-export { type RedeemOptions, runRedeem } from "./application/redeem.js";
 export {
   type CreditSelector,
   type SelectedCredit,
