@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Codex Reset Kit is a safe, open-source CLI and Codex Skill for inspecting and redeeming earned Codex rate-limit resets."
+    />
+    <meta name="theme-color" content="#101513" />
+    <title>Codex Reset Kit</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Codex Reset Kit home">
+        <span class="brand-mark" aria-hidden="true">↻</span>
+        <span>Codex Reset Kit</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#quick-start">Quick start</a>
+        <a href="#safety">Safety</a>
+        <a href="https://github.com/andyandymike/codex-reset-kit">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Open source · MIT licensed</p>
+          <h1>Inspect first.<br /><span>Reset deliberately.</span></h1>
+          <p class="lede">
+            A small cross-platform CLI and installable Codex Skill for safely inspecting and
+            redeeming earned ChatGPT rate-limit resets for Codex.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#quick-start">Get started</a>
+            <a class="button secondary" href="https://github.com/andyandymike/codex-reset-kit">
+              View source
+            </a>
+          </div>
+          <p class="disclaimer">
+            Independent project. Not affiliated with, endorsed by, or supported by OpenAI.
+          </p>
+        </div>
+
+        <div class="terminal" aria-label="Read-only command example">
+          <div class="terminal-bar">
+            <span></span><span></span><span></span>
+            <strong>read-only inspection</strong>
+          </div>
+          <pre><code><span class="prompt">$</span> codex-reset doctor
+<span class="ok">✓</span> Codex CLI available
+<span class="ok">✓</span> Compatible account detected
+
+<span class="prompt">$</span> codex-reset list
+Available reset credits: 1
+No reset was consumed.</code></pre>
+        </div>
+      </section>
+
+      <section id="safety" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Fail-closed by design</p>
+          <h2>Safety is the product.</h2>
+        </div>
+        <div class="card-grid">
+          <article class="card">
+            <span class="card-number">01</span>
+            <h3>No token handling</h3>
+            <p>Uses the documented Codex App Server. It never reads auth files, cookies, or raw tokens.</p>
+          </article>
+          <article class="card">
+            <span class="card-number">02</span>
+            <h3>Explicit confirmation</h3>
+            <p>Read-only inspection is separate from redemption, which requires a precise selector and confirmation.</p>
+          </article>
+          <article class="card">
+            <span class="card-number">03</span>
+            <h3>Verifiable outcomes</h3>
+            <p>Idempotency keys and distinct proof levels make ambiguous or partial results visible instead of guessing.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="quick-start" class="section split">
+        <div class="section-heading">
+          <p class="eyebrow">Quick start</p>
+          <h2>Local tools, minimal setup.</h2>
+          <p>
+            You need Node.js 22 or newer, a local Codex CLI, and a compatible signed-in
+            ChatGPT-backed account. Development dependencies are only needed when building from source.
+          </p>
+        </div>
+        <div class="steps">
+          <article class="step">
+            <span>1</span>
+            <div>
+              <h3>Install</h3>
+              <pre><code>npm install --global codex-reset-kit</code></pre>
+            </div>
+          </article>
+          <article class="step">
+            <span>2</span>
+            <div>
+              <h3>Inspect without consuming</h3>
+              <pre><code>codex-reset doctor
+codex-reset list --json</code></pre>
+            </div>
+          </article>
+          <article class="step">
+            <span>3</span>
+            <div>
+              <h3>Redeem only when intended</h3>
+              <pre><code>codex-reset redeem --credit-id &lt;opaque-id&gt;</code></pre>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section proof">
+        <div>
+          <p class="eyebrow">Open development</p>
+          <h2>Tested without touching a real account.</h2>
+          <p>
+            The automated suite uses a fake App Server fixture and contains no live-redemption path.
+            Review the implementation, safety model, and test cases on GitHub.
+          </p>
+        </div>
+        <a class="status" href="https://github.com/andyandymike/codex-reset-kit/actions/workflows/ci.yml">
+          <img
+            src="https://github.com/andyandymike/codex-reset-kit/actions/workflows/ci.yml/badge.svg"
+            alt="CI workflow status"
+          />
+        </a>
+      </section>
+    </main>
+
+    <footer>
+      <span>Codex Reset Kit · 2026</span>
+      <div>
+        <a href="https://github.com/andyandymike/codex-reset-kit/blob/main/SECURITY.md">Security</a>
+        <a href="https://github.com/andyandymike/codex-reset-kit/blob/main/LICENSE">License</a>
+      </div>
+    </footer>
+  </body>
+</html>
