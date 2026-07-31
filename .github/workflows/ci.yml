@@ -38,3 +38,16 @@ jobs:
         run: npm run package:smoke
       - name: Verify committed Skill bundle, license, and notices
         run: git diff --exit-code -- skills/redeem-codex-reset/scripts/codex-reset.mjs skills/redeem-codex-reset/LICENSE skills/redeem-codex-reset/THIRD_PARTY_NOTICES
+
+  required:
+    name: Required CI
+    if: ${{ always() }}
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every matrix job to succeed
+        env:
+          MATRIX_RESULT: ${{ needs.check.result }}
+        run: test "$MATRIX_RESULT" = "success"
