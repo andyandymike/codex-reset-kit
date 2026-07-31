@@ -121,12 +121,15 @@ describe("FileRedemptionAttemptStore", () => {
     const barrier = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const first = store.withAccountLock(
-      attempt.accountFingerprint,
-      attempt.attemptId,
-      () => barrier,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    let markEntered!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve;
+    });
+    const first = store.withAccountLock(attempt.accountFingerprint, attempt.attemptId, async () => {
+      markEntered();
+      await barrier;
+    });
+    await entered;
     await expect(
       store.withAccountLock(attempt.accountFingerprint, attempt.attemptId, async () => undefined),
     ).rejects.toMatchObject({ code: "locked" });
@@ -147,7 +150,7 @@ describe("FileRedemptionAttemptStore", () => {
     const owner = await store.create(redemptionAttempt());
     const other = await store.create(redemptionAttempt());
     const lockDirectory = path.join(root, "locks", owner.accountFingerprint);
-    await mkdir(lockDirectory, { recursive: true });
+    await mkdir(lockDirectory, { recursive: true, mode: 0o700 });
     await writeFile(
       path.join(lockDirectory, "0000000000.json"),
       `${JSON.stringify({
