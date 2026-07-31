@@ -1,0 +1,49 @@
+# Local product planning (never publish)
+/spec/
+
+# Dependencies and package-manager caches
+/node_modules/
+/.pnpm-store/
+/.yarn/
+
+# Build, test, and generated output
+/dist/
+/build/
+/coverage/
+/.nyc_output/
+*.tsbuildinfo
+
+# Temporary files and logs
+/.cache/
+/.tmp/
+/tmp/
+/temp/
+*.log
+*.tmp
+*.pid
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tgz
+
+# Local configuration, credentials, and secrets
+.env
+.env.*
+!.env.example
+.npmrc
+auth.json
+**/auth.json
+*.pem
+*.key
+/.codex/
+
+# Editor and operating-system files
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

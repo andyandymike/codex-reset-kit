@@ -1,0 +1,62 @@
+{
+  "name": "codex-reset-kit",
+  "version": "0.1.0",
+  "description": "Safely inspect and redeem Codex earned rate-limit resets through the official App Server protocol.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "codex-reset": "./bin/codex-reset.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "skills/redeem-codex-reset/",
+    "LICENSE",
+    "README.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src tests scripts bin package.json tsconfig.json tsconfig.build.json vitest.config.ts biome.json",
+    "format": "biome format --write src tests scripts bin package.json tsconfig.json tsconfig.build.json vitest.config.ts biome.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate:skill": "node scripts/validate-skill.mjs",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:skill",
+    "prepack": "npm run check"
+  },
+  "keywords": [
+    "codex",
+    "openai",
+    "rate-limit",
+    "cli",
+    "skill"
+  ],
+  "author": "",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {
+    "cross-spawn": "^7.0.6",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.6",
+    "@types/cross-spawn": "^6.0.6",
+    "@types/node": "^26.1.2",
+    "esbuild": "^0.28.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
