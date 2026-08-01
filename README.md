@@ -1,129 +1,147 @@
 # Codex Reset Kit
 
-Inspect earned Codex rate-limit reset credits, bind one exact credit to a short-lived local intent, and redeem it only after a fresh terminal confirmation. The project provides a cross-platform CLI and a read-only/preparation Codex Skill.
+Use an earned Codex rate-limit reset credit from your phone while your computer runs the action safely.
+
+When you are at your computer, Codex already gives you a reset control. The gap appears when you are away and using ChatGPT/Codex Remote on mobile: you can continue the task, but you need a deliberate way to inspect, select, approve, and verify one reset credit on the connected host. Codex Reset Kit fills that gap.
 
 > [!IMPORTANT]
-> Codex Reset Kit is an independent experimental project. It is not affiliated with, endorsed by, or supported by OpenAI. The npm package has not been published yet.
+> Codex Reset Kit is an independent experimental project. It is not affiliated with, endorsed by, or supported by OpenAI. The npm package has not been published yet. Remote and plugin availability can vary by Codex rollout.
 
-The kit uses only the documented `codex app-server` JSONL interface. Codex remains responsible for login, token refresh, and account selection. The kit never reads Codex authentication files, browser storage, cookies, or raw tokens.
-
-## Safety model
-
-Redemption is split into an explicit state machine:
+## How the remote flow works
 
 ```text
-inspect -> prepare a durable exact intent -> local TTY confirmation
-        -> re-read and reject drift -> send once -> read-only reconciliation
+phone request
+  -> connected host inspects credits
+  -> bind one exact account + credit + expiry in a private journal
+  -> Codex asks approval for the destructive MCP tool
+  -> user types an attempt-specific phrase in the Remote confirmation form
+  -> host re-reads the full snapshot and rejects drift
+  -> send once with one durable idempotency key
+  -> reconcile and report verified / partial / unknown evidence
 ```
 
-- `list`, `doctor`, and `prepare` never consume a reset.
-- `earliest` and calendar-date selectors are resolved to one exact credit ID before confirmation.
-- The account fingerprint, target, expiration, reset type, authoritative count, rate-limit windows, snapshot digest, and idempotency key are bound in a private journal.
-- Confirmation expires at the earlier of five minutes or the target credit's expiry. Any account, plan, target, count, or rate-limit change aborts the attempt.
-- There is no `--yes`, caller-supplied idempotency key, or service-selected `--next` path.
-- A request that may have been sent is never called rejected. Recovery uses only the same journaled key and exact parameters.
-- `verified` requires the exact target to disappear, the authoritative count to decrease by one, and a strong non-natural rate-limit reset signal.
-- Cross-process account ownership uses an append-only compare-and-swap journal. Both a crashed send and a normally returned unknown outcome retain ownership, blocking different attempts until that exact attempt is resolved.
+The first chat message starts the workflow; it is not the final confirmation. `list_reset_credits`, `get_redemption_attempt`, and preparation do not consume a credit. Only the destructive `redeem_prepared_reset` or same-attempt recovery tool can send, and both advertise `destructiveHint: true`.
 
-The Codex Skill may inspect and prepare an intent, but it must never execute `commit`, `redeem`, or `recover`. A real redemption must be confirmed by the user in a local interactive terminal. A future host-approved destructive tool would be required for safe agent-executed redemption.
+The plugin also requires a second, server-issued form confirmation bound to the exact account fingerprint, credit ID, expiry, confirmation deadline, and attempt ID. A cancellation, timeout, missing form capability, changed binding, account switch, plan change, credit change, count change, or rate-limit-window drift stops before the first send.
 
 ## Requirements
 
-- Node.js 22 or newer.
-- A locally installed Codex CLI with compatible `codex app-server` support.
-- Codex signed into a ChatGPT account whose stable identity is available to App Server.
-- Network access for Codex to read and update account state.
+End users need:
 
-OpenAI Platform API keys, API-key accounts, workspace plans (Team, Business, Enterprise, and Education), unknown future plans, and other provider types are not accepted for redemption. Only currently known personal ChatGPT plans are allowed. Workspace use remains unsupported until the App Server client identity and compliance path are formally confirmed.
+- Node.js 22 or newer on the connected computer.
+- A current Codex CLI and ChatGPT desktop app on that computer.
+- Codex signed into a compatible personal ChatGPT account.
+- The ChatGPT mobile app with Remote available and paired to the host.
+- The host awake, online, and running ChatGPT desktop.
 
-## Build from source
+You do not need TypeScript, npm development dependencies, or a checkout after the plugin is installed. OpenAI Platform API keys, API-key accounts, workspace plans, and unknown future plan types are rejected for redemption.
+
+Nothing is installed on the phone: Remote uses the connected host's plugin, MCP server, permissions, and Codex sign-in. If that host/client does not advertise MCP form elicitation, destructive reset tools refuse before any consume request.
+
+## Install the GitHub plugin
+
+This repository is also a Codex plugin marketplace:
+
+```sh
+codex plugin marketplace add andyandymike/codex-reset-kit
+```
+
+Then restart ChatGPT desktop, open **Plugins**, choose the `codex-reset-kit` marketplace, and install **Codex Reset Kit**. In Codex CLI, open `/plugins` and install it from the configured marketplace. Begin a new task after installation so the bundled Skill and MCP tools are loaded.
+
+Keep approval review human-controlled for this irreversible workflow:
+
+```toml
+approvals_reviewer = "user"
+```
+
+The plugin itself pins `redeem_prepared_reset` and `recover_reset_redemption` to `approval_mode = "prompt"`. Its MCP server runs locally over stdio and starts the documented `codex app-server`; it does not open a listening port.
+
+For a source checkout, build and validate first:
 
 ```sh
 npm ci --ignore-scripts
 npm run check
-node bin/codex-reset.js help
+npm run package:smoke
 ```
 
-After a reviewed npm release is available, this section will be updated with the published install command. Do not substitute similarly named registry packages.
+## Use it from your phone
 
-Until then, run checkout examples by replacing `codex-reset` with `node bin/codex-reset.js`; no global install or `npm link` is required.
+1. Open **Remote** in the ChatGPT mobile app and select the paired computer.
+2. Start or continue a Codex task on that host.
+3. Invoke the Skill and identify the credit you want, for example:
 
-To install the Skill manually, copy `skills/redeem-codex-reset` into your Codex skills directory. End users need Node.js 22+ and Codex CLI, but not this repository's development dependencies.
+   ```text
+   Use $redeem-codex-reset to use the Codex reset credit expiring on 2026-08-01 in Asia/Tokyo.
+   ```
 
-## Inspect without consuming
+4. Review the returned account fingerprint, exact credit ID, expiry, and confirmation deadline.
+5. Approve the destructive tool call on your phone, then type the attempt-specific phrase in the bound confirmation form.
+6. Wait for the verified, partial, or unknown result. If it is unknown, recover only the same attempt; never prepare a new one.
 
-```sh
-codex-reset doctor
-codex-reset list
-codex-reset list --json
-```
+A calendar date always requires an explicit IANA time zone. If several credits match that date or share the earliest timestamp, the workflow stops and asks you to choose an exact ID.
 
-`availableCount` is authoritative. Detail rows can be absent, capped, duplicated, inconsistent, or contain future protocol values. Precise preparation fails closed unless all available supported rows can be proven.
+## Safety model
 
-## Redeem locally
+- Selectors resolve to one exact credit ID before final approval.
+- The account fingerprint, target, expiration, reset type, authoritative count, rate-limit windows, snapshot digest, and idempotency key are bound in a private append-only journal.
+- Confirmation expires at the earlier of five minutes or the target credit's expiry.
+- There is no `--yes`, caller-supplied idempotency key, service-selected target, shell confirmation, or pseudo-terminal shortcut in the Skill.
+- The public library surface stays read-only/pure. Agent-executed redemption exists only as the host-approved MCP tool.
+- A request that may have been sent is never called rejected. Recovery reuses only the same journaled key and exact parameters.
+- `verified` requires the exact target to disappear, the authoritative count to decrease by one, and a strong non-natural rate-limit reset signal.
+- A crashed or unknown send retains the account lock, preventing a different attempt from silently duplicating it.
 
-The one-command path prepares a journal, displays the bound account and snapshot, then asks for an attempt-specific phrase:
-
-```sh
-codex-reset redeem --credit-id <opaque-id>
-codex-reset redeem --earliest
-codex-reset redeem --expires-on 2026-08-01 --timezone Asia/Tokyo
-```
-
-The two-step path is useful when a read-only agent prepares the intent and the user finishes locally:
-
-```sh
-codex-reset prepare --expires-on 2026-08-01 --timezone Asia/Tokyo --json
-codex-reset commit --attempt <printed-attempt-id>
-```
-
-`commit` shows the exact confirmation deadline, then re-reads the account and full safety snapshot after confirmation. Drift makes the intent permanently stale; prepare a new one instead of overriding the check.
+The local stdio server is authorized as the current OS user and delegates ChatGPT authentication to Codex App Server. Codex Reset Kit never reads Codex authentication files, browser storage, cookies, raw access tokens, or refresh tokens, and it never calls private ChatGPT HTTP endpoints directly.
 
 ## Unknown outcomes and recovery
 
-Every logical attempt has one idempotency key generated and fsynced before any consume request. It stays inside the local journal and is not printed into normal output.
+Every logical attempt gets one UUID idempotency key that is fsynced before any consume request and never appears in normal output.
 
-If a request may have reached the service, exit code `12` prints only the attempt ID:
+If the result is unknown, use `$redeem-codex-reset` to inspect and recover that same attempt. Recovery first performs account-bound read-only reconciliation. Only if completion cannot be proved can it ask for a new destructive approval and replay the exact account/credit/key tuple.
+
+After 24 hours, replay is disabled. The user may instead type a distinct `CLOSE UNKNOWN …` phrase. Closing sends nothing and does not decide whether the old request completed; it permanently gives up replay authority and deliberately permits future attempts.
+
+Journals live under `~/.codex-reset-kit` by default. They contain an opaque credit ID and idempotency key, but no account email or authentication token. A custom `CODEX_RESET_KIT_STATE_DIR` must be a dedicated private subdirectory; filesystem roots, the home directory itself, symlinks, and overly broad POSIX directories are rejected.
+
+## Local CLI
+
+The original local CLI remains available for people sitting at the computer:
 
 ```sh
-codex-reset recover --attempt <same-attempt-id>
+node bin/codex-reset.js doctor
+node bin/codex-reset.js list
+node bin/codex-reset.js redeem --credit-id <opaque-id>
 ```
 
-Recovery first performs account-bound, read-only reconciliation. Only if completion cannot be proved does it show the account and exact target again, ask for another local TTY confirmation, and replay the exact account-bound ID/key pair. It never creates a new logical attempt. Read-only proof remains available after 24 hours, but an uncertain attempt at least 24 hours old cannot be replayed.
-
-An old unknown attempt keeps the account blocked so a fresh key cannot silently duplicate it. After the replay deadline, `recover` may instead offer a separate `CLOSE UNKNOWN …` confirmation. Closing sends nothing and does not claim whether the old operation completed; it permanently gives up replay authority and deliberately permits future attempts. This decision returns exit `13` and is recorded as `closed-unknown`.
-
-Attempt and account-lock journals are stored under `~/.codex-reset-kit` by default with restrictive file and directory modes where the platform supports them. A custom `CODEX_RESET_KIT_STATE_DIR` must be a dedicated subdirectory; filesystem roots, the home directory itself, symlinks, and POSIX directories accessible to other users are rejected rather than having their permissions changed. Journals contain the opaque target ID and idempotency key but no account email or authentication token. Revisions are append-only. Do not publish, edit, or casually delete an uncertain attempt journal.
+Local `commit`, `redeem`, and `recover` still require a real interactive TTY and an attempt-specific phrase. The Skill never runs these commands; this prevents shell execution from becoming a second unattended remote path.
 
 ## Result semantics
 
-- `verified`: the exact target disappeared, count decreased by one, and a strong eligible window signal was observed without a natural rollover.
+- `verified`: exact target disappearance, count delta, and a strong eligible-window reset signal agree.
 - `partial`: the service completed the journaled operation, but concurrency, expiry, missing details, or incomplete signals prevent full proof.
-- `unverified`: the post-request state provides no sufficient proof yet.
-- `failed`: a definitive non-consuming service outcome or a pre-send failure occurred.
-- `closed-unknown`: after the replay deadline, the user explicitly ended recovery authority without sending or deciding the old outcome.
-
-Exit `11` means the service completed the journaled operation but verification is incomplete. It is terminal: never create another attempt. Exit `12` means the outcome is unknown and only the printed same-attempt recovery path is allowed. Exit `13` means the user deliberately closed an old unprovable journal without deciding its outcome or sending a request. Exit `14` means completion is known or proven but the local journal could not record its terminal state; run only the printed same-attempt recovery command.
+- `unverified`: the request may have reached the service, but current evidence cannot prove completion.
+- `failed`: a definitive non-consuming outcome or a pre-send failure occurred.
+- `closed-unknown`: the user explicitly ended recovery authority without sending or deciding the old outcome.
 
 | Code | Meaning |
 | ---: | --- |
 | 0 | Read/preparation succeeded, or exact redemption evidence was verified |
-| 2 | Invalid CLI arguments |
+| 2 | Invalid arguments or approval binding |
 | 3 | Missing, unsupported, or unidentifiable ChatGPT account |
 | 4 | Detail data cannot prove an exact supported target |
 | 5 | Service reports no reset credit |
 | 6 | Service reports no eligible window to reset |
-| 7 | Local confirmation missing or cancelled |
-| 8 | Prepared state changed, expired, or is concurrently locked |
+| 7 | Required confirmation missing, declined, cancelled, or expired |
+| 8 | Prepared state changed or is concurrently locked |
 | 9 | Attempt journal missing, corrupted, or in the wrong state |
 | 10 | Reserved for a contractually definitive consume rejection |
 | 11 | Operation completed; verification evidence is incomplete |
-| 12 | Outcome unknown; use only the same journaled attempt |
-| 13 | Old unknown journal deliberately closed without replay or an outcome claim |
-| 14 | Completion known/proven, but local terminal journal write failed; recover the same attempt |
+| 12 | Outcome unknown; recover only the same journaled attempt |
+| 13 | Old unknown journal deliberately closed without an outcome claim |
+| 14 | Completion known/proven, but the terminal journal write failed |
 | 20 | App Server startup, transport, or application failure |
 
-## Development and verification
+## Development and proof boundary
 
 ```sh
 npm ci --ignore-scripts
@@ -132,20 +150,23 @@ npm run check
 npm run package:smoke
 ```
 
-The test process sets a hard guard that accepts only the marked Node process with the exact `fake-app-server.mjs` fixture shape; a marker alone cannot authorize another executable. The fake server and unit suite validate handshake ordering, credit ID, UUID format, same-key parameter binding, append-only cross-process locking and replay, account/plan changes, account-bound reconciliation, expiry boundaries, mutation-before-timeout/RPC-error, and future outcomes. CI has no live-account or live-redemption path.
+Automated tests hard-block any App Server executable that is not the explicitly marked `fake-app-server.mjs` fixture. The MCP integration test completes the full initialize → prepare → elicitation → exact consume → verify sequence against that fake process and proves that no send occurs before the confirmation response. CI contains no real account, secret, or live redemption path.
 
-Runtime dependencies are exact-pinned. The standalone Skill includes the project `LICENSE` and notices for all bundled direct and transitive packages in `THIRD_PARTY_NOTICES`.
+This means the repository proves protocol and local safety behavior with fakes. It does not claim that CI or this development session redeemed a real credit. A non-consuming installed-plugin smoke test is still distinct from a live redemption and should remain so.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before changing authentication, protocol, journal, confirmation, or redemption behavior.
+Runtime dependencies are exact-pinned. The committed standalone Skill and MCP bundles include the project license and third-party notices.
 
-Maintainers must complete the protected environment and npm Trusted Publishing prerequisites in [RELEASING.md](RELEASING.md) before creating a GitHub Release.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [RELEASING.md](RELEASING.md) before changing authentication, MCP annotations, confirmation, protocol, journal, or redemption behavior.
 
 ## Protocol references
 
+- [Codex Remote connections](https://learn.chatgpt.com/docs/remote-connections)
+- [Codex plugins](https://developers.openai.com/codex/plugins)
+- [Codex MCP configuration](https://developers.openai.com/codex/mcp)
 - [Codex App Server](https://developers.openai.com/codex/app-server)
-- [OpenAI Codex repository](https://github.com/openai/codex/tree/main/codex-rs/app-server)
+- [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation)
 
-The App Server is experimental. Unknown fields may be tolerated for reads, but unknown account types, credit statuses/types, initialize shapes, and consume outcomes fail closed for redemption.
+The Codex App Server and plugin surfaces can evolve. Unknown protocol fields may be tolerated for reads, but unknown account types, credit statuses/types, initialize shapes, and consume outcomes fail closed for redemption.
 
 ## License
 

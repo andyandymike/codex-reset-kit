@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Inspect earned Codex rate-limit reset credits, bind one exact target, and redeem it only after a fresh local terminal confirmation."
+      content="Use an earned Codex reset credit from your phone through ChatGPT/Codex Remote while your connected computer safely executes and verifies it."
     />
     <meta name="theme-color" content="#101513" />
-    <title>Codex Reset Kit — Inspect and deliberately redeem reset credits</title>
+    <title>Codex Reset Kit — Use a Codex reset from your phone</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -19,8 +19,9 @@
         <span>Codex Reset Kit</span>
       </a>
       <nav aria-label="Primary navigation">
-        <a href="#quick-start">Quick start</a>
-        <a href="#what-it-does">What it does</a>
+        <a href="#why">Why</a>
+        <a href="#how">How it works</a>
+        <a href="#quick-start">Install</a>
         <a href="https://github.com/andyandymike/codex-reset-kit">GitHub</a>
       </nav>
     </header>
@@ -28,63 +29,97 @@
     <main id="main">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Open-source CLI + inspection Skill</p>
-          <h1>Use the right reset credit. <span>Deliberately.</span></h1>
+          <p class="eyebrow">Codex Remote · phone to connected host</p>
+          <h1>Away from your computer? <span>Use a Codex reset from your phone.</span></h1>
           <p class="lede">
-            Inspect earned Codex rate-limit resets, bind one exact card and account to a durable
-            intent, then redeem it only after you confirm the fresh snapshot in your own terminal.
+            Keep a Codex task moving from the ChatGPT mobile app. Your connected computer finds the
+            right earned reset credit, binds it to your account, asks you to approve that exact
+            action on your phone, then verifies what happened.
           </p>
           <div class="actions">
-            <a class="button primary" href="#what-it-does">See what it does</a>
+            <a class="button primary" href="#quick-start">Set up remote reset</a>
             <a class="button secondary" href="https://github.com/andyandymike/codex-reset-kit">
               View source
             </a>
           </div>
           <p class="disclaimer">
-            Independent project. Not affiliated with, endorsed by, or supported by OpenAI.
+            Open source and experimental. Independent from OpenAI. Automated tests never use a real
+            account or reset credit.
           </p>
         </div>
 
-        <div class="terminal" aria-label="Select a reset credit by expiration date">
+        <div class="terminal" aria-label="Example Codex Remote reset conversation">
           <div class="terminal-bar">
             <span></span><span></span><span></span>
-            <strong>select by expiration date</strong>
+            <strong>ChatGPT mobile · Remote</strong>
           </div>
-          <pre><code><span class="prompt">$</span> codex-reset list
-Available reset credits: 2
-credit_example_a · expires 2026-08-01
-credit_example_b · expires 2026-08-14
+          <pre><code><span class="muted-line">YOU · PHONE</span>
+Use my Codex reset credit expiring on
+2026-08-01 in Asia/Tokyo.
 
-<span class="prompt">$</span> codex-reset prepare \
-  --expires-on 2026-08-01 \
-  --timezone Asia/Tokyo
-Attempt: 8ae96ff3-...
-Target: credit_example_a
-Confirmation deadline: within five minutes or before target expiry
-Nothing consumed. Commit requires a local TTY.</code></pre>
+<span class="muted-line">CODEX · CONNECTED PC</span>
+Found one exact match.
+Account: 5ee12a8c3d72f421
+Credit: fake-credit-example
+Expires: 2026-08-01 09:00 JST
+Nothing consumed yet.
+
+<span class="prompt">APPROVAL REQUIRED</span>
+Use this exact reset credit now?
+Type REDEEM 8AE96FF3
+
+<span class="ok">✓ Verified on the connected host</span></code></pre>
         </div>
       </section>
 
-      <section id="what-it-does" class="section">
+      <section id="why" class="section split">
         <div class="section-heading">
-          <p class="eyebrow">Three explicit steps</p>
-          <h2>Inspect the count. Bind one target. Confirm locally.</h2>
+          <p class="eyebrow">The missing mobile action</p>
+          <h2>At your desk, use Codex. Away from it, use Remote.</h2>
+        </div>
+        <div class="body-copy">
+          <p>
+            Codex already lets you trigger a reset when you are sitting at the computer. The pain
+            starts after you leave: the mobile app can continue and steer the task through Remote,
+            but it does not give you that same direct reset control.
+          </p>
+          <p>
+            Codex Reset Kit adds that one narrow capability. It runs on the paired computer, uses
+            the computer's existing Codex sign-in, and brings the exact approval back to your phone.
+            It is not a generic remote-control daemon and it never opens a network port.
+          </p>
+        </div>
+      </section>
+
+      <section id="how" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Three deliberate steps</p>
+          <h2>Inspect on the host. Approve on the phone. Verify the result.</h2>
         </div>
         <div class="card-grid">
           <article class="card">
             <span class="card-number">01</span>
-            <h3>List available credits</h3>
-            <p>Read the authoritative count and whatever supported detail rows the service makes available.</p>
+            <h3>Find one exact credit</h3>
+            <p>
+              Select by opaque ID, unique earliest expiry, or calendar date plus an explicit IANA
+              time zone. Ambiguity stops the flow.
+            </p>
           </article>
           <article class="card">
             <span class="card-number">02</span>
-            <h3>Choose the exact target</h3>
-            <p>Select by credit ID, earliest expiry, or a calendar date in your own timezone.</p>
+            <h3>Approve the bound action</h3>
+            <p>
+              Codex marks the tool destructive. A second form shows the account fingerprint,
+              credit, and expiry and requires an attempt-specific phrase.
+            </p>
           </article>
           <article class="card">
             <span class="card-number">03</span>
-            <h3>Redeem and verify</h3>
-            <p>Use an attempt-specific local terminal phrase, then get exact, partial, or unknown evidence instead of a guess.</p>
+            <h3>Send once and prove it</h3>
+            <p>
+              The host rejects drift, persists one idempotency key, sends once, then reports
+              verified, partial, or unknown evidence instead of guessing.
+            </p>
           </article>
         </div>
       </section>
@@ -92,36 +127,44 @@ Nothing consumed. Commit requires a local TTY.</code></pre>
       <section id="quick-start" class="section split">
         <div class="section-heading">
           <p class="eyebrow">Quick start</p>
-          <h2>Local tools, minimal setup.</h2>
+          <h2>Install once on the computer. Use it later from your phone.</h2>
           <p>
-            You need Node.js 22 or newer, a local Codex CLI, and a compatible signed-in
-            ChatGPT-backed account. Development dependencies are only needed when building from source.
+            The host needs Node.js 22+, current Codex and ChatGPT desktop, and a compatible signed-in
+            personal ChatGPT account. Contributors need the repository toolchain; ordinary users do
+            not.
           </p>
         </div>
         <div class="steps">
           <article class="step">
             <span>1</span>
             <div>
-              <h3>Build from source</h3>
-              <pre><code>npm ci --ignore-scripts
-npm run check</code></pre>
-              <p>The npm package is not published yet.</p>
+              <h3>Add the GitHub marketplace</h3>
+              <pre><code>codex plugin marketplace add andyandymike/codex-reset-kit</code></pre>
+              <p>
+                Restart ChatGPT desktop, open Plugins, choose the new marketplace, and install
+                Codex Reset Kit. Codex CLI users can install it from <code>/plugins</code>. Keep
+                <code>approvals_reviewer = "user"</code> on this host so a person reviews the
+                irreversible tool call.
+              </p>
             </div>
           </article>
           <article class="step">
             <span>2</span>
             <div>
-              <h3>Inspect without consuming</h3>
-              <pre><code>node bin/codex-reset.js doctor
-node bin/codex-reset.js list --json</code></pre>
+              <h3>Pair ChatGPT Remote</h3>
+              <p>
+                Keep ChatGPT desktop awake and online, pair the mobile app to that host, and start a
+                new Codex task after installing the plugin.
+              </p>
             </div>
           </article>
           <article class="step">
             <span>3</span>
             <div>
-              <h3>Redeem only in your terminal</h3>
-              <pre><code>node bin/codex-reset.js redeem \
-  --credit-id &lt;opaque-id&gt;</code></pre>
+              <h3>Ask from the phone</h3>
+              <pre><code>Use $redeem-codex-reset to use the
+reset expiring on 2026-08-01 in
+Asia/Tokyo.</code></pre>
             </div>
           </article>
         </div>
@@ -129,11 +172,13 @@ node bin/codex-reset.js list --json</code></pre>
 
       <section class="section proof">
         <div>
-          <p class="eyebrow">Open development</p>
-          <h2>Tested without touching a real account.</h2>
+          <p class="eyebrow">Fail closed by design</p>
+          <h2>Real consequence. Fake-only automated proof.</h2>
           <p>
-            The automated suite hard-blocks unmarked App Server executables and uses only a
-            stateful fake fixture. The Skill can inspect and prepare, but never performs the commit.
+            The test suite blocks unmarked App Server executables and completes the full remote MCP
+            flow against a stateful fake. It proves that the consume request is absent before the
+            bound form response, uses the exact selected credit once, and preserves same-attempt
+            recovery. CI never signs into ChatGPT and never consumes a real reset.
           </p>
         </div>
         <a class="status" href="https://github.com/andyandymike/codex-reset-kit/actions/workflows/ci.yml">

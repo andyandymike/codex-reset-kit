@@ -18,10 +18,16 @@ The local attempt journal contains an opaque credit ID and idempotency key. It m
 
 Custom state storage must use a dedicated private subdirectory. The tool must reject a filesystem root, the home directory itself, symlinks, or an overly broad POSIX directory; it must never chmod a broad user-selected directory on the user's behalf.
 
-The bundled Skill is intentionally non-destructive: it may inspect and prepare, but must never execute `commit`, `redeem`, or `recover`. Real redemption requires a local interactive terminal. Treat any path that restores unattended or implicit consumption as a security regression.
+The bundled Skill may request real redemption only through the plugin's `redeem_prepared_reset` and `recover_reset_redemption` MCP tools. Both tools must advertise `readOnlyHint: false`, `destructiveHint: true`, and `openWorldHint: false`; the plugin pins both to `approval_mode = "prompt"`. Keep `approvals_reviewer = "user"` on hosts that use this plugin.
+
+Host approval alone is not the server-side confirmation. Immediately before a possible send, the MCP server must issue a form elicitation that displays the journaled account fingerprint, exact credit ID, and expiry and accepts only the attempt-specific phrase. Missing elicitation capability, decline, cancellation, timeout, changed binding, or a cancelled tool call must stop before sending. The initial chat request is never substituted for this confirmation.
+
+The Skill must never run the CLI `commit`, `redeem`, or `recover` commands, execute the MCP bundle through a shell, allocate a pseudo-terminal, or synthesize an elicitation response. Local CLI redemption remains TTY-only. Treat any unattended, implicit, or alternate agent-executable consume path as a security regression.
+
+The local stdio MCP server is authorized as the current OS user and opens no listening port. This project does not claim to defend against malicious code already running as that same user: such code could bypass this project and speak to Codex App Server directly. The boundary here is preventing accidental, stale, ambiguous, or unapproved action through Codex Reset Kit itself.
 
 An old uncertain attempt must continue blocking new logical sends. After the replay deadline, only a separate local `CLOSE UNKNOWN` phrase may mark it `closed-unknown`; this action sends nothing, makes no outcome claim, and must clearly warn that it gives up future replay authority.
 
-Automated tests and CI must use only the fake App Server fixture. Never add a repository secret, live ChatGPT account, or live redemption to the default test path.
+Automated tests and CI must use only the fake App Server fixture. MCP tests must prove that no fake consume occurs before the bound elicitation response and that the exact target is sent at most once. Never add a repository secret, live ChatGPT account, or live redemption to the default test path.
 
 Post-send proof must revalidate the same account before and after reading rate limits. Release workflows must build and test without OIDC permissions, publish only the reviewed tarball from the protected `npm` environment, pin Actions by full commit SHA, and include all bundled dependency notices.

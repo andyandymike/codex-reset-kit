@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const skill = path.join(root, "skills", "redeem-codex-reset");
+const skill = path.join(root, "plugins", "codex-reset-kit", "skills", "redeem-codex-reset");
 const skillFile = path.join(skill, "SKILL.md");
 const agentFile = path.join(skill, "agents", "openai.yaml");
 const bundleFile = path.join(skill, "scripts", "codex-reset.mjs");
@@ -41,7 +41,7 @@ assert(
   "Skill name does not match its directory.",
 );
 
-assert(agentYaml.includes('display_name: "Codex Reset Inspector"'), "Missing display name.");
+assert(agentYaml.includes('display_name: "Codex Reset Remote"'), "Missing display name.");
 assert(
   agentYaml.includes("$redeem-codex-reset"),
   "The default prompt must explicitly mention $redeem-codex-reset.",
@@ -51,8 +51,12 @@ assert(
   "The destructive workflow must not allow implicit Skill invocation.",
 );
 assert(
-  markdown.includes("Never run `commit`, `redeem`, or `recover` from the Skill."),
-  "SKILL.md must explicitly prohibit agent-executed consuming commands.",
+  markdown.includes("Never run the CLI `commit`, `redeem`, or `recover` commands from the Skill."),
+  "SKILL.md must prohibit bypassing the host-approved MCP tools through the CLI.",
+);
+assert(
+  markdown.includes("redeem_prepared_reset") && markdown.includes("recover_reset_redemption"),
+  "SKILL.md must name the only destructive remote tool paths.",
 );
 assert(
   !markdown.includes("--yes --json") && !markdown.includes("--idempotency-key <"),

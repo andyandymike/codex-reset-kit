@@ -1,0 +1,7 @@
+interface:
+  display_name: "Codex Reset Remote"
+  short_description: "Use a reset credit safely from your phone"
+  default_prompt: "Use $redeem-codex-reset to inspect my reset credits and, only after my fresh Remote approval, use the exact one I choose."
+
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,46 @@
+{
+  "name": "codex-reset-kit",
+  "version": "0.1.0",
+  "description": "Safely use an earned Codex reset credit from your phone through Codex Remote.",
+  "author": {
+    "name": "andyandymike",
+    "url": "https://github.com/andyandymike"
+  },
+  "homepage": "https://andyandymike.github.io/codex-reset-kit/",
+  "repository": "https://github.com/andyandymike/codex-reset-kit",
+  "license": "MIT",
+  "keywords": ["codex", "remote", "reset-credit", "rate-limit"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Reset Kit",
+    "shortDescription": "Use a Codex reset credit from your phone.",
+    "longDescription": "Inspect earned Codex reset credits on your connected computer, bind one exact credit, approve it from Codex Remote on your phone, and verify the result without exposing Codex credentials.",
+    "developerName": "andyandymike",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://andyandymike.github.io/codex-reset-kit/",
+    "defaultPrompt": [
+      "Use $redeem-codex-reset to show my available Codex reset credits.",
+      "Use $redeem-codex-reset to use the credit expiring on this date.",
+      "Use $redeem-codex-reset to recover my last uncertain reset attempt."
+    ]
+  },
+  "mcpServers": {
+    "codex-reset-kit": {
+      "command": "node",
+      "args": ["./mcp/codex-reset-mcp.mjs"],
+      "cwd": ".",
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 360,
+      "default_tools_approval_mode": "auto",
+      "tools": {
+        "redeem_prepared_reset": {
+          "approval_mode": "prompt"
+        },
+        "recover_reset_redemption": {
+          "approval_mode": "prompt"
+        }
+      }
+    }
+  }
+}

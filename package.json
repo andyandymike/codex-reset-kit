@@ -1,7 +1,7 @@
 {
   "name": "codex-reset-kit",
   "version": "0.1.0",
-  "description": "List and safely redeem earned Codex rate-limit reset credits by ID or expiration date.",
+  "description": "Safely use an earned Codex reset credit from your phone through Codex Remote.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andyandymike/codex-reset-kit.git"
@@ -26,7 +26,8 @@
   "files": [
     "bin/",
     "dist/",
-    "skills/redeem-codex-reset/",
+    "plugins/codex-reset-kit/",
+    ".agents/plugins/marketplace.json",
     "LICENSE",
     "THIRD_PARTY_NOTICES",
     "README.md",
@@ -41,8 +42,9 @@
     "test:watch": "vitest",
     "audit": "npm audit --audit-level=high",
     "validate:skill": "node scripts/validate-skill.mjs",
+    "validate:plugin": "node scripts/validate-plugin.mjs",
     "package:smoke": "node scripts/package-smoke.mjs",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:skill",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:skill && npm run validate:plugin",
     "prepack": "npm run check"
   },
   "keywords": [
@@ -50,7 +52,9 @@
     "openai",
     "rate-limit",
     "cli",
-    "skill"
+    "skill",
+    "plugin",
+    "remote"
   ],
   "license": "MIT",
   "publishConfig": {

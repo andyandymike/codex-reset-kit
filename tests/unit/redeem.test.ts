@@ -139,6 +139,28 @@ describe("journaled redemption", () => {
     expect(execution.envelope.redemption?.state).toBe("stale");
   });
 
+  it("rechecks an accepted authorization after journaling and before send", async () => {
+    const store = new MemoryRedemptionAttemptStore();
+    const client = new FakeClient({ snapshots: stableBefore() });
+    let authorizationChecks = 0;
+    const execution = await runRedeem(client, store, {
+      selector: { kind: "id", id: "credit-1" },
+      timeZone: "UTC",
+      confirm: async () => true,
+      authorizationStillValid: () => {
+        authorizationChecks += 1;
+        return authorizationChecks === 1;
+      },
+      verificationDelaysMs: [],
+      now: () => OBSERVED_AT_MS,
+    });
+    expect(execution.exitCode).toBe(EXIT_CODE.cancelled);
+    expect(execution.envelope.error?.code).toBe("confirmation-cancelled");
+    expect(execution.envelope.redemption?.state).toBe("prepared");
+    expect(authorizationChecks).toBe(2);
+    expect(client.consumeCalls).toHaveLength(0);
+  });
+
   it("persists an exact intent before sending and verifies the exact target", async () => {
     const store = new MemoryRedemptionAttemptStore();
     let attemptWasDurable = false;
@@ -360,6 +382,40 @@ describe("journaled redemption", () => {
     expect(recoveryClient.consumeCalls).toEqual([
       { idempotencyKey: journaled.idempotencyKey, creditId: "credit-1" },
     ]);
+  });
+
+  it("rechecks recovery authorization after its final journal write and before replay", async () => {
+    const store = new MemoryRedemptionAttemptStore();
+    const firstClient = new FakeClient({
+      snapshots: stableBefore(4),
+      consumeError: new AppServerError("timeout", "timed out", { requestSent: true }),
+    });
+    const first = await runRedeem(firstClient, store, {
+      selector: { kind: "id", id: "credit-1" },
+      timeZone: "UTC",
+      confirm: async () => true,
+      verificationDelaysMs: [],
+      now: () => OBSERVED_AT_MS,
+    });
+    const attemptId = first.envelope.redemption?.attemptId as string;
+    const recoveryClient = new FakeClient({ snapshots: [snapshot(), snapshot(), snapshot()] });
+    let authorizationChecks = 0;
+
+    const recovered = await runRecoverRedemption(recoveryClient, store, {
+      attemptId,
+      confirm: async () => true,
+      authorizationStillValid: () => {
+        authorizationChecks += 1;
+        return authorizationChecks === 1;
+      },
+      verificationDelaysMs: [],
+      now: () => OBSERVED_AT_MS + 1_000,
+    });
+
+    expect(recovered.exitCode).toBe(EXIT_CODE.cancelled);
+    expect(recovered.envelope.error?.code).toBe("confirmation-cancelled");
+    expect(authorizationChecks).toBe(2);
+    expect(recoveryClient.consumeCalls).toHaveLength(0);
   });
 
   it("never replays an uncertain attempt after a plan change", async () => {

@@ -15,7 +15,7 @@ The release verification job has no OIDC permission. Only the separate `publish`
 ## Release procedure
 
 1. Run `npm ci --ignore-scripts`, `npm run audit`, `npm run check`, and `npm run package:smoke` locally.
-2. Update `package.json`, `package-lock.json`, the embedded CLI version, release notes, and generated Skill bundle in one reviewed commit.
+2. Update `package.json`, `package-lock.json`, the embedded CLI/MCP/plugin versions, release notes, and generated Skill and MCP bundles in one reviewed commit.
 3. Merge through the protected `main` branch and wait for every required CI check.
 4. Create a `v<package-version>` tag on that exact `main` commit and publish a non-prerelease GitHub Release.
 5. Review the protected `npm` deployment, approve it deliberately, then verify the npm provenance and packed contents after publication.

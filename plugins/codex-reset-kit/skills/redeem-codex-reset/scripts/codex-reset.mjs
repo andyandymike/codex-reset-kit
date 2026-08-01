@@ -17273,7 +17273,7 @@ async function runPrepareRedemption(client, store, options) {
   await store.create(attempt);
   applyAttempt(envelope, attempt);
   envelope.warnings.push(
-    `Nothing was consumed. This preparation expires within five minutes and before the target credit expires; confirmation must happen in a local interactive terminal.`
+    options.confirmationMode === "codex-remote" ? "Nothing was consumed. This preparation expires within five minutes and before the target credit expires; redemption still requires the destructive Codex tool approval and its bound in-client confirmation." : "Nothing was consumed. This preparation expires within five minutes and before the target credit expires; confirmation must happen in a local interactive terminal."
   );
   return succeed(envelope);
 }
@@ -17312,14 +17312,14 @@ async function runCommitRedemption(client, store, options) {
   const epochBeforeConfirmation = client.getAccountEpoch();
   if (!await options.confirm(frozenClone(attempt), frozenClone(account), frozenClone(snapshot))) {
     attempt = await saveState(store, attempt, "stale", {
-      lastError: "Local confirmation was cancelled."
+      lastError: "User confirmation was cancelled or unavailable."
     });
     applyAttempt(envelope, attempt);
     return fail(
       envelope,
       EXIT_CODE.cancelled,
       "confirmation-required",
-      "Redemption was cancelled or a local interactive confirmation was unavailable."
+      "Redemption was cancelled or the required user confirmation was unavailable."
     );
   }
   try {
@@ -17359,11 +17359,32 @@ async function runCommitRedemption(client, store, options) {
         applyAttempt(envelope, attempt);
         return fail(envelope, EXIT_CODE.stale, "prepared-state-changed", latestMatch.reason);
       }
+      if (options.authorizationStillValid?.() === false) {
+        return fail(
+          envelope,
+          EXIT_CODE.cancelled,
+          "confirmation-cancelled",
+          "The approved action was cancelled before the consume request was sent."
+        );
+      }
       attempt = await saveState(store, attempt, "sending", {
         approvedAt: now(),
         lastError: null
       });
       applyAttempt(envelope, attempt);
+      if (options.authorizationStillValid?.() === false) {
+        attempt = await saveState(store, attempt, "prepared", {
+          approvedAt: null,
+          lastError: "The approved action was cancelled before the consume request was sent."
+        });
+        applyAttempt(envelope, attempt);
+        return fail(
+          envelope,
+          EXIT_CODE.cancelled,
+          "confirmation-cancelled",
+          "The approved action was cancelled before the consume request was sent."
+        );
+      }
       let outcome;
       try {
         outcome = await client.consumeResetCredit({
@@ -17514,6 +17535,14 @@ async function runRecoverRedemption(client, store, options) {
             );
             return succeed(envelope);
           }
+          if (options.authorizationStillValid?.() === false) {
+            return fail(
+              envelope,
+              EXIT_CODE.cancelled,
+              "confirmation-cancelled",
+              "The approved closure was cancelled before the journal was changed."
+            );
+          }
           attempt = await saveState(store, attempt, "closed-unknown", {
             outcome: null,
             lastError: "The user deliberately closed an unprovable attempt after the replay deadline."
@@ -17586,8 +17615,24 @@ async function runRecoverRedemption(client, store, options) {
         );
         return succeed(envelope);
       }
+      if (options.authorizationStillValid?.() === false) {
+        return fail(
+          envelope,
+          EXIT_CODE.cancelled,
+          "confirmation-cancelled",
+          "The approved recovery was cancelled before the consume request was sent."
+        );
+      }
       attempt = await saveState(store, attempt, "sending", { lastError: null });
       applyAttempt(envelope, attempt);
+      if (options.authorizationStillValid?.() === false) {
+        return fail(
+          envelope,
+          EXIT_CODE.cancelled,
+          "confirmation-cancelled",
+          "The approved recovery was cancelled before the consume request was sent."
+        );
+      }
       let outcome;
       try {
         outcome = await client.consumeResetCredit({
@@ -17631,6 +17676,7 @@ async function runRedeem(client, store, options) {
     confirm: options.confirm,
     ...options.verificationDelaysMs === void 0 ? {} : { verificationDelaysMs: options.verificationDelaysMs },
     ...options.sleep === void 0 ? {} : { sleep: options.sleep },
+    ...options.authorizationStillValid === void 0 ? {} : { authorizationStillValid: options.authorizationStillValid },
     ...options.now === void 0 ? {} : { now: options.now }
   });
   committed.envelope.command = "redeem";

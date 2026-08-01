@@ -34,10 +34,10 @@ jobs:
         run: npm run audit
       - name: Run source, protocol, fixture, and Skill checks
         run: npm run check
-      - name: Smoke-test the packed npm CLI and standalone Skill
+      - name: Smoke-test the packed npm CLI, plugin, MCP server, and Skill
         run: npm run package:smoke
-      - name: Verify committed Skill bundle, license, and notices
-        run: git diff --exit-code -- skills/redeem-codex-reset/scripts/codex-reset.mjs skills/redeem-codex-reset/LICENSE skills/redeem-codex-reset/THIRD_PARTY_NOTICES
+      - name: Verify committed plugin bundles, license, and notices
+        run: git diff --exit-code -- plugins/codex-reset-kit/mcp/codex-reset-mcp.mjs plugins/codex-reset-kit/skills/redeem-codex-reset/scripts/codex-reset.mjs plugins/codex-reset-kit/skills/redeem-codex-reset/LICENSE plugins/codex-reset-kit/skills/redeem-codex-reset/THIRD_PARTY_NOTICES
 
   required:
     name: Required CI

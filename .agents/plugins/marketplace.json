@@ -1,0 +1,20 @@
+{
+  "name": "codex-reset-kit",
+  "interface": {
+    "displayName": "Codex Reset Kit"
+  },
+  "plugins": [
+    {
+      "name": "codex-reset-kit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-reset-kit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

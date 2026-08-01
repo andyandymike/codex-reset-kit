@@ -1,7 +1,0 @@
-interface:
-  display_name: "Codex Reset Inspector"
-  short_description: "Inspect credits and prepare a local confirmation"
-  default_prompt: "Use $redeem-codex-reset to inspect my reset credits and prepare a deliberate local redemption."
-
-policy:
-  allow_implicit_invocation: false

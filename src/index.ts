@@ -1,5 +1,5 @@
-// The package's public library surface is intentionally read-only/pure. Real redemption is
-// available only through the local interactive CLI, which owns confirmation and attempt journals.
+// The package's public library surface is intentionally read-only/pure. Real redemption is owned
+// only by the local interactive CLI or the plugin's host-approved MCP adapter.
 export { type CommandEnvelope, type CommandExecution, EXIT_CODE } from "./application/output.js";
 export {
   type CreditSelector,
