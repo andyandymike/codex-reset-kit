@@ -130,6 +130,7 @@ describe("stdio App Server client", () => {
         timeZone: "UTC",
         confirm: async () => true,
         verificationDelaysMs: [],
+        now: () => OBSERVED_AT_MS,
       });
       expect(execution.exitCode).toBe(0);
       expect(execution.envelope.verification?.status).toBe("verified");
@@ -146,6 +147,7 @@ describe("stdio App Server client", () => {
         timeZone: "UTC",
         confirm: async () => true,
         verificationDelaysMs: [0],
+        now: () => OBSERVED_AT_MS,
       });
       expect(execution.exitCode).toBe(0);
       expect(execution.envelope.verification?.status).toBe("verified");
@@ -167,6 +169,7 @@ describe("stdio App Server client", () => {
           timeZone: "UTC",
           confirm: async () => true,
           verificationDelaysMs: [],
+          now: () => OBSERVED_AT_MS,
         });
         expect(execution.exitCode).toBe(exitCode);
         expect(execution.envelope.redemption?.outcome).toBe(outcome);
@@ -185,6 +188,7 @@ describe("stdio App Server client", () => {
         timeZone: "UTC",
         confirm: async () => true,
         verificationDelaysMs: [],
+        now: () => OBSERVED_AT_MS,
       });
       expect(execution.exitCode).toBe(EXIT_CODE.verificationIncomplete);
       expect(execution.envelope.verification?.status).toBe("unverified");

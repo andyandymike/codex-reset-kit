@@ -6,7 +6,7 @@ import { confirmationChallenge } from "../application/redemption-intent.js";
 import { getRateLimitBuckets, type RateLimitSnapshot } from "../domain/rate-limit.js";
 import type { RedemptionAttempt } from "../domain/redemption-attempt.js";
 import type { VerificationResult } from "../domain/verification.js";
-import { redactText, safeTerminalField } from "../security/redact.js";
+import { formatCreditId, redactText, safeTerminalField } from "../security/redact.js";
 
 export function formatTimestamp(epochSeconds: number | null, timeZone: string): string {
   if (epochSeconds == null) {
@@ -27,7 +27,7 @@ function renderSnapshot(snapshot: PublicSnapshot, timeZone: string): string[] {
   ];
 
   for (const credit of snapshot.resetCredits.credits) {
-    lines.push(`  - ${safeTerminalField(credit.id)}`);
+    lines.push(`  - ${formatCreditId(credit.id)}`);
     lines.push(`    status: ${safeTerminalField(credit.status)}`);
     lines.push(`    type: ${safeTerminalField(credit.resetType ?? "unknown")}`);
     lines.push(`    expires: ${formatTimestamp(credit.expiresAt, timeZone)}`);
@@ -97,7 +97,7 @@ export function renderTerminal(envelope: CommandEnvelope, timeZone: string): str
     lines.push(
       `Selector: ${safeTerminalField(JSON.stringify(envelope.redemption.requestedSelector))}`,
     );
-    lines.push(`Credit ID: ${safeTerminalField(envelope.redemption.creditId)}`);
+    lines.push(`Credit ID: ${formatCreditId(envelope.redemption.creditId)}`);
     lines.push(
       `Credit expires: ${formatTimestamp(
         envelope.redemption.selectedCredit.expiresAt,
@@ -141,7 +141,7 @@ export function renderTerminal(envelope: CommandEnvelope, timeZone: string): str
       `Error [${safeTerminalField(envelope.error.code)}]: ${safeTerminalField(envelope.error.message, 1_024)}`,
     );
     for (const candidate of envelope.error.candidates) {
-      lines.push(`  candidate: ${safeTerminalField(candidate.id)}`);
+      lines.push(`  candidate: ${formatCreditId(candidate.id)}`);
     }
   }
 
@@ -159,7 +159,7 @@ function writeConfirmationSnapshot(
   process.stderr.write(`Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}\n`);
   process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}\n`);
   process.stderr.write(`Available credits: ${snapshot.resetCredits.availableCount}\n`);
-  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}\n`);
+  process.stderr.write(`Credit ID: ${formatCreditId(attempt.target.id)}\n`);
   process.stderr.write(`Credit type: ${attempt.target.resetType}\n`);
   process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}\n`);
   for (const [bucketId, bucket] of getRateLimitBuckets(snapshot)) {
@@ -217,7 +217,7 @@ export async function confirmRecovery(
   );
   process.stderr.write(`Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}\n`);
   process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}\n`);
-  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}\n`);
+  process.stderr.write(`Credit ID: ${formatCreditId(attempt.target.id)}\n`);
   process.stderr.write(`Credit type: ${attempt.target.resetType}\n`);
   process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}\n`);
   process.stderr.write(
@@ -250,7 +250,7 @@ export async function confirmCloseUnknown(
   );
   process.stderr.write(`Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}\n`);
   process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}\n`);
-  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}\n`);
+  process.stderr.write(`Credit ID: ${formatCreditId(attempt.target.id)}\n`);
   process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}\n`);
   process.stderr.write(`Current proof: ${verification.status}\n`);
   for (const note of verification.notes) {

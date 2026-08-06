@@ -8,7 +8,7 @@
   },
   "homepage": "https://andyandymike.github.io/codex-reset-kit/",
   "bugs": {
-    "url": "https://github.com/andyandymike/codex-reset-kit/security/advisories/new"
+    "url": "https://github.com/andyandymike/codex-reset-kit/issues"
   },
   "type": "module",
   "engines": {

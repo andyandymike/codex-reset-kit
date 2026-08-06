@@ -146,11 +146,26 @@ describe("Codex Reset Kit MCP stdio server", () => {
       const listed = await harness.waitFor((message) => message.id === 2);
       const tools = listed.result?.tools as Array<Record<string, unknown>>;
       const redeemTool = tools.find((tool) => tool.name === "redeem_prepared_reset");
+      const setupTool = tools.find((tool) => tool.name === "check_remote_reset_setup");
+      expect(setupTool?.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      });
       expect(redeemTool?.annotations).toMatchObject({
         readOnlyHint: false,
         destructiveHint: true,
         openWorldHint: false,
       });
+
+      harness.send({
+        id: 20,
+        method: "tools/call",
+        params: { name: "check_remote_reset_setup", arguments: { time_zone: "UTC" } },
+      });
+      const setup = resultContent(await harness.waitFor((message) => message.id === 20));
+      expect(setup.readiness).toMatchObject({ ready: true, formElicitation: true });
+      expect(existsSync(ledgerPath)).toBe(false);
 
       harness.send({
         id: 3,

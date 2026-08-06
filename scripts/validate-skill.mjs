@@ -59,6 +59,10 @@ assert(
   "SKILL.md must name the only destructive remote tool paths.",
 );
 assert(
+  markdown.includes("check_remote_reset_setup") && markdown.includes("This tool is read-only"),
+  "SKILL.md must use the read-only Remote setup preflight.",
+);
+assert(
   !markdown.includes("--yes --json") && !markdown.includes("--idempotency-key <"),
   "SKILL.md must not expose an unattended consume or caller-supplied recovery command.",
 );

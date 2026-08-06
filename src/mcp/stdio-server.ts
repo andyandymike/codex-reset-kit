@@ -268,7 +268,7 @@ export class ResetMcpStdioServer {
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
       instructions:
-        "Inspection never consumes a credit. Prepare first, then use only the exact returned approval binding. Redemption and recovery require host approval plus an in-client attempt-specific confirmation.",
+        "Run the read-only setup check before relying on phone access. Inspection never consumes a credit. Prepare first, then use only the exact returned approval binding. Redemption and recovery require host approval plus an in-client attempt-specific confirmation.",
     });
   }
 
@@ -332,6 +332,10 @@ export class ResetMcpStdioServer {
     try {
       const result = await this.#tools.call(name, args, {
         signal: controller.signal,
+        clientCapabilities: {
+          protocolVersion: this.#negotiatedProtocolVersion,
+          formElicitation: this.#clientSupportsFormElicitation,
+        },
         requestConfirmation: (confirmation) =>
           this.#requestConfirmation(confirmation, controller.signal),
       });

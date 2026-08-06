@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Stats } from "node:fs";
-import { link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
+import { existsSync, constants as fsConstants, type Stats } from "node:fs";
+import { access, link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -398,24 +398,212 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
-export function defaultAttemptStateDirectory(environment: NodeJS.ProcessEnv = process.env): string {
+export interface AttemptStateDirectoryRuntime {
+  platform?: NodeJS.Platform;
+  homeDirectory?: string;
+  localAppDataDirectory?: string | null;
+  pathExists?: (candidate: string) => boolean;
+}
+
+function isStrictDescendant(
+  candidate: string,
+  parent: string,
+  pathApi: typeof path.win32 | typeof path.posix,
+): boolean {
+  const relative = pathApi.relative(parent, candidate);
+  return (
+    relative.length > 0 &&
+    relative !== ".." &&
+    !relative.startsWith(`..${pathApi.sep}`) &&
+    !pathApi.isAbsolute(relative)
+  );
+}
+
+export function defaultAttemptStateDirectory(
+  environment: NodeJS.ProcessEnv = process.env,
+  runtime: AttemptStateDirectoryRuntime = {},
+): string {
+  const platform = runtime.platform ?? process.platform;
+  const pathApi = platform === "win32" ? path.win32 : path.posix;
+  const home = pathApi.resolve(runtime.homeDirectory ?? homedir());
+  const configuredLocalAppData =
+    runtime.localAppDataDirectory ?? environment.LOCALAPPDATA?.trim() ?? null;
+  const localAppData =
+    platform === "win32"
+      ? pathApi.resolve(configuredLocalAppData || pathApi.join(home, "AppData", "Local"))
+      : null;
   const configured = environment.CODEX_RESET_KIT_STATE_DIR?.trim();
-  const resolved =
-    configured == null || configured.length === 0
-      ? path.join(homedir(), ".codex-reset-kit")
-      : path.resolve(configured);
   const comparePath = (value: string): string =>
-    process.platform === "win32" ? value.toLowerCase() : value;
+    platform === "win32" ? value.toLowerCase() : value;
+  let resolved: string;
+  if (configured != null && configured.length > 0) {
+    resolved = pathApi.resolve(configured);
+  } else if (platform === "win32") {
+    const current = pathApi.join(localAppData as string, "codex-reset-kit");
+    const legacy = pathApi.join(home, ".codex-reset-kit");
+    const pathExists = runtime.pathExists ?? existsSync;
+    const currentExists = pathExists(current);
+    const legacyExists = pathExists(legacy);
+    if (currentExists && legacyExists && comparePath(current) !== comparePath(legacy)) {
+      throw new AttemptStoreError(
+        "invalid",
+        "Both current and legacy Windows redemption state directories exist. Reconcile them before continuing so an uncertain attempt cannot be bypassed.",
+      );
+    }
+    resolved = legacyExists ? legacy : current;
+  } else {
+    resolved = pathApi.join(home, ".codex-reset-kit");
+  }
+  const forbiddenRoots = [pathApi.parse(resolved).root, home, localAppData].filter(
+    (value): value is string => value != null,
+  );
   if (
-    comparePath(resolved) === comparePath(path.parse(resolved).root) ||
-    comparePath(resolved) === comparePath(path.resolve(homedir()))
+    forbiddenRoots.some((root) => comparePath(resolved) === comparePath(root)) ||
+    comparePath(home) === comparePath(pathApi.parse(home).root) ||
+    (localAppData != null &&
+      comparePath(localAppData) === comparePath(pathApi.parse(localAppData).root))
   ) {
     throw new AttemptStoreError(
       "invalid",
-      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root or the home directory.",
+      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root, the home directory, or LOCALAPPDATA itself.",
+    );
+  }
+  if (
+    platform === "win32" &&
+    ![home, localAppData as string].some((parent) => isStrictDescendant(resolved, parent, pathApi))
+  ) {
+    throw new AttemptStoreError(
+      "invalid",
+      "On Windows, CODEX_RESET_KIT_STATE_DIR must stay inside the current user's home or LOCALAPPDATA directory.",
     );
   }
   return resolved;
+}
+
+export interface AttemptStateDirectoryInspection {
+  ready: boolean;
+  state: "existing" | "creatable" | "injected" | "invalid";
+  message: string;
+}
+
+function privateDirectoryError(metadata: Stats, label: string): string | null {
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+    return `${label} is not a regular private directory.`;
+  }
+  if (process.platform !== "win32" && (metadata.mode & 0o077) !== 0) {
+    return `${label} is accessible to other users.`;
+  }
+  return null;
+}
+
+/** Inspect journal storage without creating a directory or reading journal contents. */
+export async function inspectAttemptStateDirectory(
+  directory: string,
+): Promise<AttemptStateDirectoryInspection> {
+  let metadata: Stats;
+  try {
+    metadata = await lstat(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      return { ready: false, state: "invalid", message: "The journal path cannot be inspected." };
+    }
+
+    let parent = path.dirname(directory);
+    for (;;) {
+      try {
+        const parentMetadata = await lstat(parent);
+        if (!parentMetadata.isDirectory() || parentMetadata.isSymbolicLink()) {
+          return {
+            ready: false,
+            state: "invalid",
+            message: "The nearest existing journal parent is not a regular directory.",
+          };
+        }
+        try {
+          await access(parent, fsConstants.W_OK);
+        } catch {
+          return {
+            ready: false,
+            state: "invalid",
+            message: "The nearest existing journal parent is not writable by the current user.",
+          };
+        }
+        return {
+          ready: true,
+          state: "creatable",
+          message:
+            "The journal directory does not exist yet; its parent is writable. This read-only check did not create it.",
+        };
+      } catch (parentError) {
+        if ((parentError as NodeJS.ErrnoException).code !== "ENOENT") {
+          return {
+            ready: false,
+            state: "invalid",
+            message: "A journal parent path cannot be inspected.",
+          };
+        }
+      }
+      const next = path.dirname(parent);
+      if (next === parent) {
+        return {
+          ready: false,
+          state: "invalid",
+          message: "No existing parent was found for the journal directory.",
+        };
+      }
+      parent = next;
+    }
+  }
+
+  const rootError = privateDirectoryError(metadata, "The journal directory");
+  if (rootError != null) {
+    return { ready: false, state: "invalid", message: rootError };
+  }
+  try {
+    await access(directory, fsConstants.R_OK | fsConstants.W_OK);
+  } catch {
+    return {
+      ready: false,
+      state: "invalid",
+      message: "The journal directory is not readable and writable by the current user.",
+    };
+  }
+
+  for (const child of ["attempts", "locks"]) {
+    const childDirectory = path.join(directory, child);
+    let childMetadata: Stats;
+    try {
+      childMetadata = await lstat(childDirectory);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+      return {
+        ready: false,
+        state: "invalid",
+        message: `The journal ${child} directory cannot be inspected.`,
+      };
+    }
+    const childError = privateDirectoryError(childMetadata, `The journal ${child} directory`);
+    if (childError != null) {
+      return { ready: false, state: "invalid", message: childError };
+    }
+    try {
+      await access(childDirectory, fsConstants.R_OK | fsConstants.W_OK);
+    } catch {
+      return {
+        ready: false,
+        state: "invalid",
+        message: `The journal ${child} directory is not readable and writable by the current user.`,
+      };
+    }
+  }
+
+  return {
+    ready: true,
+    state: "existing",
+    message: "The existing journal directory and known subdirectories passed read-only checks.",
+  };
 }
 
 export class FileRedemptionAttemptStore implements RedemptionAttemptStore {

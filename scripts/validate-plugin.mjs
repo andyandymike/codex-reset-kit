@@ -59,6 +59,10 @@ for (const tool of ["redeem_prepared_reset", "recover_reset_redemption"]) {
   assert(server.tools?.[tool]?.approval_mode === "prompt", `${tool} must always prompt.`);
   assert(mcpBundle.includes(tool), `MCP bundle does not contain ${tool}.`);
 }
+assert(
+  mcpBundle.includes("check_remote_reset_setup"),
+  "MCP bundle does not contain the read-only Remote setup check.",
+);
 assert(mcpBundle.startsWith("#!/usr/bin/env node"), "MCP bundle needs a Node shebang.");
 
 assert(marketplace.name === "codex-reset-kit", "Marketplace name is incorrect.");

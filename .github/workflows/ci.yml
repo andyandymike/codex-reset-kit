@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -31,6 +32,7 @@ jobs:
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
       - name: Audit high-severity dependency advisories
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == 24 }}
         run: npm run audit
       - name: Run source, protocol, fixture, and Skill checks
         run: npm run check

@@ -5,3 +5,6 @@
 *.jpeg binary
 *.gif binary
 *.ico binary
+
+plugins/codex-reset-kit/mcp/codex-reset-mcp.mjs linguist-generated=true
+plugins/codex-reset-kit/skills/redeem-codex-reset/scripts/codex-reset.mjs linguist-generated=true

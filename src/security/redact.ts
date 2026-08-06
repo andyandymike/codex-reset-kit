@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+
 const SENSITIVE_KEY = /^(?:accessToken|refreshToken|apiKey|authorization|cookie|password|secret)$/i;
+const CREDIT_ID_PREVIEW_LENGTH = 96;
 
 function isUnsafeControlCodePoint(codePoint: number): boolean {
   return (
@@ -69,6 +72,20 @@ export function redactText(value: string): string {
 export function safeTerminalField(value: string, maxLength = 512): string {
   const cleaned = flattenTerminalSeparators(redactText(value)).replace(/\s+/gu, " ").trim();
   return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength - 1)}…`;
+}
+
+/**
+ * Render an opaque credit ID without letting a long common prefix hide which exact ID is bound.
+ * The SHA-256 digest is calculated from the complete, unmodified ID; the preview is sanitized.
+ */
+export function formatCreditId(value: string): string {
+  const cleaned = safeTerminalField(value, Number.MAX_SAFE_INTEGER);
+  const preview =
+    cleaned.length <= CREDIT_ID_PREVIEW_LENGTH
+      ? cleaned
+      : `${cleaned.slice(0, 48)}…${cleaned.slice(-32)}`;
+  const digest = createHash("sha256").update(value, "utf8").digest("hex");
+  return `${preview} [length ${String(value.length)}; sha256 ${digest}]`;
 }
 
 export function redactUnknown(value: unknown): unknown {

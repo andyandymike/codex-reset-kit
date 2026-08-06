@@ -15073,7 +15073,9 @@ function isAppServerError(value) {
 import { createInterface } from "node:readline";
 
 // src/security/redact.ts
+import { createHash } from "node:crypto";
 var SENSITIVE_KEY = /^(?:accessToken|refreshToken|apiKey|authorization|cookie|password|secret)$/i;
+var CREDIT_ID_PREVIEW_LENGTH = 96;
 function isUnsafeControlCodePoint(codePoint) {
   return codePoint <= 31 || codePoint >= 127 && codePoint <= 159 || codePoint === 1564 || codePoint === 8206 || codePoint === 8207 || codePoint >= 8234 && codePoint <= 8238 || codePoint >= 8294 && codePoint <= 8297 || codePoint === 65279;
 }
@@ -15118,6 +15120,12 @@ function redactText(value) {
 function safeTerminalField(value, maxLength = 512) {
   const cleaned = flattenTerminalSeparators(redactText(value)).replace(/\s+/gu, " ").trim();
   return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength - 1)}\u2026`;
+}
+function formatCreditId(value) {
+  const cleaned = safeTerminalField(value, Number.MAX_SAFE_INTEGER);
+  const preview = cleaned.length <= CREDIT_ID_PREVIEW_LENGTH ? cleaned : `${cleaned.slice(0, 48)}\u2026${cleaned.slice(-32)}`;
+  const digest = createHash("sha256").update(value, "utf8").digest("hex");
+  return `${preview} [length ${String(value.length)}; sha256 ${digest}]`;
 }
 function redactUnknown(value) {
   if (typeof value === "string") {
@@ -15686,7 +15694,8 @@ async function connectAppServer(options) {
 
 // src/application/attempt-store.ts
 import { randomUUID } from "node:crypto";
-import { link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
+import { existsSync, constants as fsConstants } from "node:fs";
+import { access, link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import path2 from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -16132,14 +16141,50 @@ function isProcessAlive(pid) {
     return error51.code === "EPERM";
   }
 }
-function defaultAttemptStateDirectory(environment = process.env) {
+function isStrictDescendant(candidate, parent, pathApi) {
+  const relative = pathApi.relative(parent, candidate);
+  return relative.length > 0 && relative !== ".." && !relative.startsWith(`..${pathApi.sep}`) && !pathApi.isAbsolute(relative);
+}
+function defaultAttemptStateDirectory(environment = process.env, runtime = {}) {
+  const platform = runtime.platform ?? process.platform;
+  const pathApi = platform === "win32" ? path2.win32 : path2.posix;
+  const home = pathApi.resolve(runtime.homeDirectory ?? homedir());
+  const configuredLocalAppData = runtime.localAppDataDirectory ?? environment.LOCALAPPDATA?.trim() ?? null;
+  const localAppData = platform === "win32" ? pathApi.resolve(configuredLocalAppData || pathApi.join(home, "AppData", "Local")) : null;
   const configured = environment.CODEX_RESET_KIT_STATE_DIR?.trim();
-  const resolved = configured == null || configured.length === 0 ? path2.join(homedir(), ".codex-reset-kit") : path2.resolve(configured);
-  const comparePath = (value) => process.platform === "win32" ? value.toLowerCase() : value;
-  if (comparePath(resolved) === comparePath(path2.parse(resolved).root) || comparePath(resolved) === comparePath(path2.resolve(homedir()))) {
+  const comparePath = (value) => platform === "win32" ? value.toLowerCase() : value;
+  let resolved;
+  if (configured != null && configured.length > 0) {
+    resolved = pathApi.resolve(configured);
+  } else if (platform === "win32") {
+    const current = pathApi.join(localAppData, "codex-reset-kit");
+    const legacy = pathApi.join(home, ".codex-reset-kit");
+    const pathExists = runtime.pathExists ?? existsSync;
+    const currentExists = pathExists(current);
+    const legacyExists = pathExists(legacy);
+    if (currentExists && legacyExists && comparePath(current) !== comparePath(legacy)) {
+      throw new AttemptStoreError(
+        "invalid",
+        "Both current and legacy Windows redemption state directories exist. Reconcile them before continuing so an uncertain attempt cannot be bypassed."
+      );
+    }
+    resolved = legacyExists ? legacy : current;
+  } else {
+    resolved = pathApi.join(home, ".codex-reset-kit");
+  }
+  const forbiddenRoots = [pathApi.parse(resolved).root, home, localAppData].filter(
+    (value) => value != null
+  );
+  if (forbiddenRoots.some((root) => comparePath(resolved) === comparePath(root)) || comparePath(home) === comparePath(pathApi.parse(home).root) || localAppData != null && comparePath(localAppData) === comparePath(pathApi.parse(localAppData).root)) {
     throw new AttemptStoreError(
       "invalid",
-      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root or the home directory."
+      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root, the home directory, or LOCALAPPDATA itself."
+    );
+  }
+  if (platform === "win32" && ![home, localAppData].some((parent) => isStrictDescendant(resolved, parent, pathApi))) {
+    throw new AttemptStoreError(
+      "invalid",
+      "On Windows, CODEX_RESET_KIT_STATE_DIR must stay inside the current user's home or LOCALAPPDATA directory."
     );
   }
   return resolved;
@@ -16465,7 +16510,7 @@ function getReportedPlanTypes(snapshot) {
 }
 
 // src/application/account.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 var SUPPORTED_PERSONAL_PLANS = /* @__PURE__ */ new Set(["free", "go", "plus", "pro", "prolite"]);
 var WORKSPACE_PLANS = /* @__PURE__ */ new Set([
   "team",
@@ -16518,7 +16563,7 @@ function accountFingerprint(account) {
   if (account.type !== "chatgpt" || email3 == null || email3.length === 0) {
     throw new Error("A ChatGPT account email is required to create a redemption fingerprint.");
   }
-  return createHash("sha256").update(`chatgpt\0${email3}`, "utf8").digest("hex");
+  return createHash2("sha256").update(`chatgpt\0${email3}`, "utf8").digest("hex");
 }
 function publicAccountFingerprint(account) {
   try {
@@ -16828,7 +16873,7 @@ function verifyRedemption(attempt, after, observedAt = Date.now()) {
 }
 
 // src/application/redemption-intent.ts
-import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
 function sortedWindows(snapshot) {
   const windows = [];
   for (const [bucketId, bucket] of getRateLimitBuckets(snapshot)) {
@@ -16872,7 +16917,7 @@ function safetySnapshotDigest(fingerprint, snapshot) {
       byLimitId: Object.entries(snapshot.rateLimitsByLimitId).sort(([left], [right]) => left.localeCompare(right)).map(([id, bucket]) => [id, canonicalBucket(bucket)])
     }
   });
-  return createHash2("sha256").update(canonical, "utf8").digest("hex");
+  return createHash3("sha256").update(canonical, "utf8").digest("hex");
 }
 function canonicalBucket(bucket) {
   if (bucket == null) {
@@ -17847,7 +17892,7 @@ function renderSnapshot(snapshot, timeZone) {
     `Reset credits: ${snapshot.resetCredits.availableCount} (${snapshot.resetCredits.detailsState})`
   ];
   for (const credit of snapshot.resetCredits.credits) {
-    lines.push(`  - ${safeTerminalField(credit.id)}`);
+    lines.push(`  - ${formatCreditId(credit.id)}`);
     lines.push(`    status: ${safeTerminalField(credit.status)}`);
     lines.push(`    type: ${safeTerminalField(credit.resetType ?? "unknown")}`);
     lines.push(`    expires: ${formatTimestamp(credit.expiresAt, timeZone)}`);
@@ -17903,7 +17948,7 @@ function renderTerminal(envelope, timeZone) {
     lines.push(
       `Selector: ${safeTerminalField(JSON.stringify(envelope.redemption.requestedSelector))}`
     );
-    lines.push(`Credit ID: ${safeTerminalField(envelope.redemption.creditId)}`);
+    lines.push(`Credit ID: ${formatCreditId(envelope.redemption.creditId)}`);
     lines.push(
       `Credit expires: ${formatTimestamp(
         envelope.redemption.selectedCredit.expiresAt,
@@ -17945,7 +17990,7 @@ function renderTerminal(envelope, timeZone) {
       `Error [${safeTerminalField(envelope.error.code)}]: ${safeTerminalField(envelope.error.message, 1024)}`
     );
     for (const candidate of envelope.error.candidates) {
-      lines.push(`  candidate: ${safeTerminalField(candidate.id)}`);
+      lines.push(`  candidate: ${formatCreditId(candidate.id)}`);
     }
   }
   return redactText(lines.join("\n"));
@@ -17961,7 +18006,7 @@ function writeConfirmationSnapshot(attempt, account, snapshot) {
 `);
   process.stderr.write(`Available credits: ${snapshot.resetCredits.availableCount}
 `);
-  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}
+  process.stderr.write(`Credit ID: ${formatCreditId(attempt.target.id)}
 `);
   process.stderr.write(`Credit type: ${attempt.target.resetType}
 `);
@@ -18018,7 +18063,7 @@ async function confirmRecovery(attempt, account) {
 `);
   process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}
 `);
-  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}
+  process.stderr.write(`Credit ID: ${formatCreditId(attempt.target.id)}
 `);
   process.stderr.write(`Credit type: ${attempt.target.resetType}
 `);
@@ -18053,7 +18098,7 @@ async function confirmCloseUnknown(attempt, account, verification) {
 `);
   process.stderr.write(`Plan: ${safeTerminalField(attempt.planType ?? "unknown")}
 `);
-  process.stderr.write(`Credit ID: ${safeTerminalField(attempt.target.id)}
+  process.stderr.write(`Credit ID: ${formatCreditId(attempt.target.id)}
 `);
   process.stderr.write(`Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}
 `);

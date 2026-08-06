@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { redactText, redactUnknown, safeTerminalField } from "../../src/security/redact.js";
+import {
+  formatCreditId,
+  redactText,
+  redactUnknown,
+  safeTerminalField,
+} from "../../src/security/redact.js";
 
 describe("redaction", () => {
   it("redacts common token forms in diagnostics", () => {
@@ -24,5 +29,16 @@ describe("redaction", () => {
     expect(value).not.toContain("\u202e");
     expect(value).not.toContain("\n");
     expect(value).toContain("FORGED");
+  });
+
+  it("distinguishes long opaque credit IDs that share the same visible prefix", () => {
+    const first = formatCreditId(`${"x".repeat(1_023)}a`);
+    const second = formatCreditId(`${"x".repeat(1_023)}b`);
+
+    expect(first).not.toBe(second);
+    expect(first).toContain("length 1024");
+    expect(first).toContain(`${"x".repeat(31)}a`);
+    expect(second).toContain(`${"x".repeat(31)}b`);
+    expect(first).toMatch(/sha256 [0-9a-f]{64}/);
   });
 });

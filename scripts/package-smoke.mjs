@@ -154,8 +154,17 @@ try {
   const destructive = Array.isArray(toolList)
     ? toolList.find((tool) => tool.name === "redeem_prepared_reset")
     : null;
+  const setupCheck = Array.isArray(toolList)
+    ? toolList.find((tool) => tool.name === "check_remote_reset_setup")
+    : null;
   if (destructive?.annotations?.destructiveHint !== true) {
     throw new Error("The packed MCP server did not advertise its destructive reset tool.");
+  }
+  if (
+    setupCheck?.annotations?.readOnlyHint !== true ||
+    setupCheck?.annotations?.destructiveHint !== false
+  ) {
+    throw new Error("The packed MCP server did not advertise its read-only setup check.");
   }
   process.stdout.write("Packed npm CLI, plugin, MCP server, and Skill smoke tests passed.\n");
 } finally {

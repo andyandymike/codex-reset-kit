@@ -6,6 +6,7 @@ import {
   AttemptStoreError,
   defaultAttemptStateDirectory,
   FileRedemptionAttemptStore,
+  inspectAttemptStateDirectory,
 } from "../../src/application/attempt-store.js";
 import { redemptionAttempt } from "../helpers.js";
 
@@ -32,6 +33,98 @@ describe("FileRedemptionAttemptStore", () => {
     expect(() =>
       defaultAttemptStateDirectory({ CODEX_RESET_KIT_STATE_DIR: filesystemRoot }),
     ).toThrowError(AttemptStoreError);
+  });
+
+  it("uses LOCALAPPDATA by default on Windows", () => {
+    expect(
+      defaultAttemptStateDirectory(
+        {},
+        {
+          platform: "win32",
+          homeDirectory: "C:\\Users\\Ada",
+          localAppDataDirectory: "C:\\Users\\Ada\\AppData\\Local",
+          pathExists: () => false,
+        },
+      ),
+    ).toBe("C:\\Users\\Ada\\AppData\\Local\\codex-reset-kit");
+  });
+
+  it("keeps an existing legacy Windows journal authoritative", () => {
+    expect(
+      defaultAttemptStateDirectory(
+        {},
+        {
+          platform: "win32",
+          homeDirectory: "C:\\Users\\Ada",
+          localAppDataDirectory: "C:\\Users\\Ada\\AppData\\Local",
+          pathExists: (candidate) => candidate.endsWith("\\.codex-reset-kit"),
+        },
+      ),
+    ).toBe("C:\\Users\\Ada\\.codex-reset-kit");
+  });
+
+  it("fails closed when both Windows default journal locations exist", () => {
+    expect(() =>
+      defaultAttemptStateDirectory(
+        {},
+        {
+          platform: "win32",
+          homeDirectory: "C:\\Users\\Ada",
+          localAppDataDirectory: "C:\\Users\\Ada\\AppData\\Local",
+          pathExists: () => true,
+        },
+      ),
+    ).toThrowError(/Both current and legacy Windows redemption state directories exist/);
+  });
+
+  it("rejects Windows custom state outside per-user locations", () => {
+    expect(() =>
+      defaultAttemptStateDirectory(
+        { CODEX_RESET_KIT_STATE_DIR: "D:\\Shared\\codex-reset-kit" },
+        {
+          platform: "win32",
+          homeDirectory: "C:\\Users\\Ada",
+          localAppDataDirectory: "C:\\Users\\Ada\\AppData\\Local",
+        },
+      ),
+    ).toThrowError(/current user's home or LOCALAPPDATA/);
+  });
+
+  it("allows a dedicated Windows custom state directory under the user profile", () => {
+    expect(
+      defaultAttemptStateDirectory(
+        { CODEX_RESET_KIT_STATE_DIR: "C:\\Users\\Ada\\Private\\reset-state" },
+        {
+          platform: "win32",
+          homeDirectory: "C:\\Users\\Ada",
+          localAppDataDirectory: "C:\\Users\\Ada\\AppData\\Local",
+        },
+      ),
+    ).toBe("C:\\Users\\Ada\\Private\\reset-state");
+  });
+
+  it("preflights an uncreated journal path without creating it", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-reset-preflight-"));
+    temporaryDirectories.push(root);
+    const candidate = path.join(root, "not-created");
+
+    await expect(inspectAttemptStateDirectory(candidate)).resolves.toMatchObject({
+      ready: true,
+      state: "creatable",
+    });
+    await expect(stat(candidate)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("rejects a journal path that is an existing regular file", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-reset-preflight-file-"));
+    temporaryDirectories.push(root);
+    const candidate = path.join(root, "state.json");
+    await writeFile(candidate, "{}\n", "utf8");
+
+    await expect(inspectAttemptStateDirectory(candidate)).resolves.toMatchObject({
+      ready: false,
+      state: "invalid",
+    });
   });
 
   it("durably appends revisions without replacing the previous record", async () => {

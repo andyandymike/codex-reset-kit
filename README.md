@@ -20,7 +20,7 @@ phone request
   -> reconcile and report verified / partial / unknown evidence
 ```
 
-The first chat message starts the workflow; it is not the final confirmation. `list_reset_credits`, `get_redemption_attempt`, and preparation do not consume a credit. Only the destructive `redeem_prepared_reset` or same-attempt recovery tool can send, and both advertise `destructiveHint: true`.
+The first chat message starts the workflow; it is not the final confirmation. `check_remote_reset_setup`, `list_reset_credits`, `get_redemption_attempt`, and preparation do not consume a credit. Only the destructive `redeem_prepared_reset` or same-attempt recovery tool can send, and both advertise `destructiveHint: true`.
 
 The plugin also requires a second, server-issued form confirmation bound to the exact account fingerprint, credit ID, expiry, confirmation deadline, and attempt ID. A cancellation, timeout, missing form capability, changed binding, account switch, plan change, credit change, count change, or rate-limit-window drift stops before the first send.
 
@@ -48,6 +48,14 @@ codex plugin marketplace add andyandymike/codex-reset-kit
 
 Then restart ChatGPT desktop, open **Plugins**, choose the `codex-reset-kit` marketplace, and install **Codex Reset Kit**. In Codex CLI, open `/plugins` and install it from the configured marketplace. Begin a new task after installation so the bundled Skill and MCP tools are loaded.
 
+Before relying on it away from the computer, run this once in that new desktop task:
+
+```text
+Use $redeem-codex-reset to check whether this computer is ready for a phone Remote reset.
+```
+
+The read-only preflight checks App Server startup, the signed-in account and plan, reset-credit detail support, local journal readiness, the negotiated MCP protocol, and the bound form-confirmation capability. It does not create a missing journal directory, prepare an attempt, or consume a credit.
+
 Keep approval review human-controlled for this irreversible workflow:
 
 ```toml
@@ -71,10 +79,10 @@ npm run package:smoke
 3. Invoke the Skill and identify the credit you want, for example:
 
    ```text
-   Use $redeem-codex-reset to use the Codex reset credit expiring on 2026-08-01 in Asia/Tokyo.
+   Use $redeem-codex-reset to use the Codex reset credit expiring on 2030-08-01 in Asia/Tokyo.
    ```
 
-4. Review the returned account fingerprint, exact credit ID, expiry, and confirmation deadline.
+4. Review the returned account fingerprint, credit-ID preview and full SHA-256 identity, expiry, and confirmation deadline.
 5. Approve the destructive tool call on your phone, then type the attempt-specific phrase in the bound confirmation form.
 6. Wait for the verified, partial, or unknown result. If it is unknown, recover only the same attempt; never prepare a new one.
 
@@ -91,7 +99,7 @@ A calendar date always requires an explicit IANA time zone. If several credits m
 - `verified` requires the exact target to disappear, the authoritative count to decrease by one, and a strong non-natural rate-limit reset signal.
 - A crashed or unknown send retains the account lock, preventing a different attempt from silently duplicating it.
 
-The local stdio server is authorized as the current OS user and delegates ChatGPT authentication to Codex App Server. Codex Reset Kit never reads Codex authentication files, browser storage, cookies, raw access tokens, or refresh tokens, and it never calls private ChatGPT HTTP endpoints directly.
+The local stdio server is authorized as the current OS user and delegates ChatGPT authentication to Codex App Server. Codex Reset Kit never reads Codex authentication files, browser storage, cookies, raw access tokens, or refresh tokens, and it never calls private ChatGPT HTTP endpoints directly. The displayed account fingerprint is a deterministic pseudonymous hash used for binding and comparison; it is not anonymization and should not be published.
 
 ## Unknown outcomes and recovery
 
@@ -101,7 +109,7 @@ If the result is unknown, use `$redeem-codex-reset` to inspect and recover that 
 
 After 24 hours, replay is disabled. The user may instead type a distinct `CLOSE UNKNOWN …` phrase. Closing sends nothing and does not decide whether the old request completed; it permanently gives up replay authority and deliberately permits future attempts.
 
-Journals live under `~/.codex-reset-kit` by default. They contain an opaque credit ID and idempotency key, but no account email or authentication token. A custom `CODEX_RESET_KIT_STATE_DIR` must be a dedicated private subdirectory; filesystem roots, the home directory itself, symlinks, and overly broad POSIX directories are rejected.
+New Windows installs keep journals under `%LOCALAPPDATA%\codex-reset-kit`; macOS and Linux use `~/.codex-reset-kit`. An existing Windows `~/.codex-reset-kit` remains authoritative so an uncertain recovery lock is never silently abandoned; if both default locations exist, the tool fails closed until the journals are reconciled. Journals contain an opaque credit ID and idempotency key, but no account email or authentication token. A custom `CODEX_RESET_KIT_STATE_DIR` must be a dedicated private subdirectory; filesystem roots, the home directory itself, symlinks, and overly broad POSIX directories are rejected. Windows custom paths must also stay under the current user's home or `%LOCALAPPDATA%` directory. Existing Windows ACL inheritance remains part of the local OS trust boundary.
 
 ## Local CLI
 
@@ -152,7 +160,7 @@ npm run package:smoke
 
 Automated tests hard-block any App Server executable that is not the explicitly marked `fake-app-server.mjs` fixture. The MCP integration test completes the full initialize → prepare → elicitation → exact consume → verify sequence against that fake process and proves that no send occurs before the confirmation response. CI contains no real account, secret, or live redemption path.
 
-This means the repository proves protocol and local safety behavior with fakes. It does not claim that CI or this development session redeemed a real credit. A non-consuming installed-plugin smoke test is still distinct from a live redemption and should remain so.
+This means the repository proves protocol and local safety behavior with fakes. It does not claim that CI or this development session redeemed a real credit. The packed-plugin smoke test verifies that the installed MCP server exposes the read-only setup check, and the integration suite exercises that check against the fake App Server; neither is a live redemption.
 
 Runtime dependencies are exact-pinned. The committed standalone Skill and MCP bundles include the project license and third-party notices.
 

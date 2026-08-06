@@ -3,11 +3,14 @@ import type { CodexAppServerClient } from "../app-server/client.js";
 import { connectAppServer } from "../app-server/client.js";
 import { isAppServerError } from "../app-server/errors.js";
 import {
+  type AttemptStateDirectoryInspection,
   AttemptStoreError,
   defaultAttemptStateDirectory,
   FileRedemptionAttemptStore,
+  inspectAttemptStateDirectory,
   type RedemptionAttemptStore,
 } from "../application/attempt-store.js";
+import { runDoctor } from "../application/doctor.js";
 import { runList } from "../application/list.js";
 import {
   type CommandEnvelope,
@@ -29,14 +32,20 @@ import {
   validateTimeZone,
 } from "../domain/select-credit.js";
 import { formatTimestamp, renderTerminal } from "../presentation/terminal.js";
-import { hasControlCharacters, redactText, safeTerminalField } from "../security/redact.js";
+import {
+  formatCreditId,
+  hasControlCharacters,
+  redactText,
+  safeTerminalField,
+} from "../security/redact.js";
 
 const VERSION = "0.1.0";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH_PREFIX_PATTERN = /^[0-9a-f]{16}$/i;
-const MAX_CREDIT_ID_LENGTH = 4_096;
+const MAX_CREDIT_ID_LENGTH = 1_024;
 
 export const RESET_MCP_TOOL_NAMES = [
+  "check_remote_reset_setup",
   "list_reset_credits",
   "prepare_reset_redemption",
   "get_redemption_attempt",
@@ -91,6 +100,28 @@ const approvalBindingProperties = {
 } as const;
 
 export const RESET_MCP_TOOLS: ResetMcpToolDefinition[] = [
+  {
+    name: "check_remote_reset_setup",
+    title: "Check Codex Remote reset setup",
+    description:
+      "Read-only preflight for the connected host, account, reset-credit details, negotiated MCP protocol, and required in-client form confirmation. This never prepares or consumes a credit.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        time_zone: {
+          type: "string",
+          description: "IANA time zone used only to format any returned timestamps.",
+        },
+      },
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+      idempotentHint: true,
+    },
+  },
   {
     name: "list_reset_credits",
     title: "List Codex reset credits",
@@ -288,6 +319,10 @@ export interface RemoteConfirmationRequest {
 
 export interface ResetMcpCallContext {
   signal: AbortSignal;
+  clientCapabilities: {
+    protocolVersion: string | null;
+    formElicitation: boolean;
+  };
   requestConfirmation(request: RemoteConfirmationRequest): Promise<boolean>;
 }
 
@@ -304,6 +339,7 @@ export interface ResetMcpToolServiceDependencies {
   now?: () => number;
   verificationDelaysMs?: number[];
   sleep?: (milliseconds: number) => Promise<void>;
+  inspectStateDirectory?: () => Promise<AttemptStateDirectoryInspection>;
 }
 
 function defaultTimeZone(): string {
@@ -441,7 +477,7 @@ function inputError(tool: ResetMcpToolName, error: unknown): ResetMcpCallResult 
 }
 
 function applicationFailure(
-  command: "list" | "prepare" | "commit" | "recover",
+  command: "list" | "doctor" | "prepare" | "commit" | "recover",
   error: unknown,
 ): CommandExecution {
   const envelope = createEnvelope(command);
@@ -477,7 +513,7 @@ function confirmationMessage(
   kind: RemoteConfirmationRequest["kind"],
 ): { challenge: string; message: string } {
   const fingerprint = attempt.accountFingerprint.slice(0, 16);
-  const creditId = safeTerminalField(attempt.target.id, 512);
+  const creditId = formatCreditId(attempt.target.id);
   const expiration = formatTimestamp(attempt.target.expiresAt, attempt.timeZone);
   if (kind === "close-unknown") {
     const challenge = `CLOSE UNKNOWN ${attempt.attemptId.slice(0, 8).toUpperCase()}`;
@@ -529,12 +565,25 @@ export class ResetMcpToolService {
   readonly #now: () => number;
   readonly #verificationDelaysMs: number[] | undefined;
   readonly #sleep: ((milliseconds: number) => Promise<void>) | undefined;
+  readonly #inspectStateDirectory: () => Promise<AttemptStateDirectoryInspection>;
 
   constructor(dependencies: ResetMcpToolServiceDependencies = {}) {
     const environment = dependencies.environment ?? process.env;
-    this.#store =
-      dependencies.store ??
-      new FileRedemptionAttemptStore(defaultAttemptStateDirectory(environment));
+    if (dependencies.store == null) {
+      const stateDirectory = defaultAttemptStateDirectory(environment);
+      this.#store = new FileRedemptionAttemptStore(stateDirectory);
+      this.#inspectStateDirectory =
+        dependencies.inspectStateDirectory ?? (() => inspectAttemptStateDirectory(stateDirectory));
+    } else {
+      this.#store = dependencies.store;
+      this.#inspectStateDirectory =
+        dependencies.inspectStateDirectory ??
+        (async () => ({
+          ready: true,
+          state: "injected",
+          message: "The injected journal store is available to this process.",
+        }));
+    }
     this.#now = dependencies.now ?? Date.now;
     this.#verificationDelaysMs = dependencies.verificationDelaysMs;
     this.#sleep = dependencies.sleep;
@@ -563,6 +612,9 @@ export class ResetMcpToolService {
     try {
       if (name === "get_redemption_attempt") {
         return await this.#getAttempt(attemptInputSchema.parse(rawInput));
+      }
+      if (name === "check_remote_reset_setup") {
+        return await this.#checkRemoteSetup(listInputSchema.parse(rawInput), context);
       }
       if (name === "list_reset_credits") {
         return await this.#list(listInputSchema.parse(rawInput));
@@ -598,6 +650,75 @@ export class ResetMcpToolService {
         timeZone,
       });
     }
+  }
+
+  async #checkRemoteSetup(
+    input: z.infer<typeof listInputSchema>,
+    context: ResetMcpCallContext,
+  ): Promise<ResetMcpCallResult> {
+    const timeZone = input.time_zone ?? defaultTimeZone();
+    const [doctorResult, journalResult] = await Promise.allSettled([
+      this.#withClient((client) => runDoctor(client)),
+      this.#inspectStateDirectory(),
+    ]);
+    const execution =
+      doctorResult.status === "fulfilled"
+        ? doctorResult.value
+        : applicationFailure("doctor", doctorResult.reason);
+    const journal: AttemptStateDirectoryInspection =
+      journalResult.status === "fulfilled"
+        ? journalResult.value
+        : {
+            ready: false,
+            state: "invalid",
+            message: redactText(
+              journalResult.reason instanceof Error
+                ? journalResult.reason.message
+                : String(journalResult.reason),
+            ),
+          };
+
+    const requiredDiagnostics = [
+      "app-server",
+      "account",
+      "rate-limits",
+      "reset-credit-details",
+      "redemption-account",
+    ] as const;
+    const checks = Object.fromEntries(
+      requiredDiagnostics.map((name) => [
+        name,
+        execution.envelope.diagnostics.find((diagnostic) => diagnostic.name === name)?.ok === true,
+      ]),
+    );
+    checks["journal-state"] = journal.ready;
+    const hostReady = requiredDiagnostics.every((name) => checks[name]) && journal.ready;
+    const formElicitation = context.clientCapabilities.formElicitation;
+    const ready = execution.exitCode === EXIT_CODE.success && hostReady && formElicitation;
+    const readiness = {
+      ready,
+      hostReady,
+      protocolVersion: context.clientCapabilities.protocolVersion,
+      formElicitation,
+      checks,
+      journal,
+    };
+    const result = executionResult("check_remote_reset_setup", execution, timeZone, {
+      timeZone,
+      readiness,
+    });
+    result.content[0] = {
+      type: "text",
+      text: [
+        `Remote reset setup: ${ready ? "READY" : "NOT READY"}`,
+        `MCP protocol: ${safeTerminalField(context.clientCapabilities.protocolVersion ?? "unavailable")}`,
+        `Bound confirmation form: ${formElicitation ? "available" : "unavailable"}`,
+        `Local journal: ${journal.ready ? "available" : "unavailable"} (${safeTerminalField(journal.message, 1_024)})`,
+        executionText(remoteEnvelope(execution), timeZone),
+        "This check was read-only. No reset attempt was prepared and no credit was consumed.",
+      ].join("\n"),
+    };
+    return result;
   }
 
   async #prepare(input: z.infer<typeof prepareInputSchema>): Promise<ResetMcpCallResult> {
@@ -646,7 +767,7 @@ export class ResetMcpToolService {
               `Attempt: ${attempt.attemptId}`,
               `State: ${attempt.state}`,
               `Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}`,
-              `Credit ID: ${safeTerminalField(attempt.target.id)}`,
+              `Credit ID: ${formatCreditId(attempt.target.id)}`,
               `Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}`,
               `Next action: ${String(view.nextAction)}`,
               "No consume request was sent and the journal was not changed.",

@@ -543,6 +543,8 @@ import { randomUUID as randomUUID3 } from "node:crypto";
 import { createInterface as createInterface3 } from "node:readline";
 
 // src/security/redact.ts
+import { createHash } from "node:crypto";
+var CREDIT_ID_PREVIEW_LENGTH = 96;
 function isUnsafeControlCodePoint(codePoint) {
   return codePoint <= 31 || codePoint >= 127 && codePoint <= 159 || codePoint === 1564 || codePoint === 8206 || codePoint === 8207 || codePoint >= 8234 && codePoint <= 8238 || codePoint >= 8294 && codePoint <= 8297 || codePoint === 65279;
 }
@@ -587,6 +589,12 @@ function redactText(value) {
 function safeTerminalField(value, maxLength = 512) {
   const cleaned = flattenTerminalSeparators(redactText(value)).replace(/\s+/gu, " ").trim();
   return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength - 1)}\u2026`;
+}
+function formatCreditId(value) {
+  const cleaned = safeTerminalField(value, Number.MAX_SAFE_INTEGER);
+  const preview = cleaned.length <= CREDIT_ID_PREVIEW_LENGTH ? cleaned : `${cleaned.slice(0, 48)}\u2026${cleaned.slice(-32)}`;
+  const digest = createHash("sha256").update(value, "utf8").digest("hex");
+  return `${preview} [length ${String(value.length)}; sha256 ${digest}]`;
 }
 
 // node_modules/zod/v4/classic/external.js
@@ -15671,7 +15679,8 @@ async function connectAppServer(options) {
 
 // src/application/attempt-store.ts
 import { randomUUID } from "node:crypto";
-import { link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
+import { existsSync, constants as fsConstants } from "node:fs";
+import { access, link, lstat, mkdir, open, readdir, readFile, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import path2 from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -16117,17 +16126,163 @@ function isProcessAlive(pid) {
     return error51.code === "EPERM";
   }
 }
-function defaultAttemptStateDirectory(environment = process.env) {
+function isStrictDescendant(candidate, parent, pathApi) {
+  const relative = pathApi.relative(parent, candidate);
+  return relative.length > 0 && relative !== ".." && !relative.startsWith(`..${pathApi.sep}`) && !pathApi.isAbsolute(relative);
+}
+function defaultAttemptStateDirectory(environment = process.env, runtime = {}) {
+  const platform = runtime.platform ?? process.platform;
+  const pathApi = platform === "win32" ? path2.win32 : path2.posix;
+  const home = pathApi.resolve(runtime.homeDirectory ?? homedir());
+  const configuredLocalAppData = runtime.localAppDataDirectory ?? environment.LOCALAPPDATA?.trim() ?? null;
+  const localAppData = platform === "win32" ? pathApi.resolve(configuredLocalAppData || pathApi.join(home, "AppData", "Local")) : null;
   const configured = environment.CODEX_RESET_KIT_STATE_DIR?.trim();
-  const resolved = configured == null || configured.length === 0 ? path2.join(homedir(), ".codex-reset-kit") : path2.resolve(configured);
-  const comparePath = (value) => process.platform === "win32" ? value.toLowerCase() : value;
-  if (comparePath(resolved) === comparePath(path2.parse(resolved).root) || comparePath(resolved) === comparePath(path2.resolve(homedir()))) {
+  const comparePath = (value) => platform === "win32" ? value.toLowerCase() : value;
+  let resolved;
+  if (configured != null && configured.length > 0) {
+    resolved = pathApi.resolve(configured);
+  } else if (platform === "win32") {
+    const current = pathApi.join(localAppData, "codex-reset-kit");
+    const legacy = pathApi.join(home, ".codex-reset-kit");
+    const pathExists = runtime.pathExists ?? existsSync;
+    const currentExists = pathExists(current);
+    const legacyExists = pathExists(legacy);
+    if (currentExists && legacyExists && comparePath(current) !== comparePath(legacy)) {
+      throw new AttemptStoreError(
+        "invalid",
+        "Both current and legacy Windows redemption state directories exist. Reconcile them before continuing so an uncertain attempt cannot be bypassed."
+      );
+    }
+    resolved = legacyExists ? legacy : current;
+  } else {
+    resolved = pathApi.join(home, ".codex-reset-kit");
+  }
+  const forbiddenRoots = [pathApi.parse(resolved).root, home, localAppData].filter(
+    (value) => value != null
+  );
+  if (forbiddenRoots.some((root) => comparePath(resolved) === comparePath(root)) || comparePath(home) === comparePath(pathApi.parse(home).root) || localAppData != null && comparePath(localAppData) === comparePath(pathApi.parse(localAppData).root)) {
     throw new AttemptStoreError(
       "invalid",
-      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root or the home directory."
+      "CODEX_RESET_KIT_STATE_DIR must name a dedicated subdirectory, not a filesystem root, the home directory, or LOCALAPPDATA itself."
+    );
+  }
+  if (platform === "win32" && ![home, localAppData].some((parent) => isStrictDescendant(resolved, parent, pathApi))) {
+    throw new AttemptStoreError(
+      "invalid",
+      "On Windows, CODEX_RESET_KIT_STATE_DIR must stay inside the current user's home or LOCALAPPDATA directory."
     );
   }
   return resolved;
+}
+function privateDirectoryError(metadata, label) {
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+    return `${label} is not a regular private directory.`;
+  }
+  if (process.platform !== "win32" && (metadata.mode & 63) !== 0) {
+    return `${label} is accessible to other users.`;
+  }
+  return null;
+}
+async function inspectAttemptStateDirectory(directory) {
+  let metadata;
+  try {
+    metadata = await lstat(directory);
+  } catch (error51) {
+    if (error51.code !== "ENOENT") {
+      return { ready: false, state: "invalid", message: "The journal path cannot be inspected." };
+    }
+    let parent = path2.dirname(directory);
+    for (; ; ) {
+      try {
+        const parentMetadata = await lstat(parent);
+        if (!parentMetadata.isDirectory() || parentMetadata.isSymbolicLink()) {
+          return {
+            ready: false,
+            state: "invalid",
+            message: "The nearest existing journal parent is not a regular directory."
+          };
+        }
+        try {
+          await access(parent, fsConstants.W_OK);
+        } catch {
+          return {
+            ready: false,
+            state: "invalid",
+            message: "The nearest existing journal parent is not writable by the current user."
+          };
+        }
+        return {
+          ready: true,
+          state: "creatable",
+          message: "The journal directory does not exist yet; its parent is writable. This read-only check did not create it."
+        };
+      } catch (parentError) {
+        if (parentError.code !== "ENOENT") {
+          return {
+            ready: false,
+            state: "invalid",
+            message: "A journal parent path cannot be inspected."
+          };
+        }
+      }
+      const next = path2.dirname(parent);
+      if (next === parent) {
+        return {
+          ready: false,
+          state: "invalid",
+          message: "No existing parent was found for the journal directory."
+        };
+      }
+      parent = next;
+    }
+  }
+  const rootError = privateDirectoryError(metadata, "The journal directory");
+  if (rootError != null) {
+    return { ready: false, state: "invalid", message: rootError };
+  }
+  try {
+    await access(directory, fsConstants.R_OK | fsConstants.W_OK);
+  } catch {
+    return {
+      ready: false,
+      state: "invalid",
+      message: "The journal directory is not readable and writable by the current user."
+    };
+  }
+  for (const child of ["attempts", "locks"]) {
+    const childDirectory = path2.join(directory, child);
+    let childMetadata;
+    try {
+      childMetadata = await lstat(childDirectory);
+    } catch (error51) {
+      if (error51.code === "ENOENT") {
+        continue;
+      }
+      return {
+        ready: false,
+        state: "invalid",
+        message: `The journal ${child} directory cannot be inspected.`
+      };
+    }
+    const childError = privateDirectoryError(childMetadata, `The journal ${child} directory`);
+    if (childError != null) {
+      return { ready: false, state: "invalid", message: childError };
+    }
+    try {
+      await access(childDirectory, fsConstants.R_OK | fsConstants.W_OK);
+    } catch {
+      return {
+        ready: false,
+        state: "invalid",
+        message: `The journal ${child} directory is not readable and writable by the current user.`
+      };
+    }
+  }
+  return {
+    ready: true,
+    state: "existing",
+    message: "The existing journal directory and known subdirectories passed read-only checks."
+  };
 }
 var FileRedemptionAttemptStore = class {
   #root;
@@ -16450,7 +16605,7 @@ function getReportedPlanTypes(snapshot) {
 }
 
 // src/application/account.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 var SUPPORTED_PERSONAL_PLANS = /* @__PURE__ */ new Set(["free", "go", "plus", "pro", "prolite"]);
 var WORKSPACE_PLANS = /* @__PURE__ */ new Set([
   "team",
@@ -16503,7 +16658,7 @@ function accountFingerprint(account) {
   if (account.type !== "chatgpt" || email3 == null || email3.length === 0) {
     throw new Error("A ChatGPT account email is required to create a redemption fingerprint.");
   }
-  return createHash("sha256").update(`chatgpt\0${email3}`, "utf8").digest("hex");
+  return createHash2("sha256").update(`chatgpt\0${email3}`, "utf8").digest("hex");
 }
 function publicAccountFingerprint(account) {
   try {
@@ -16594,6 +16749,65 @@ function fail(envelope, exitCode, code, message, candidates = []) {
   envelope.ok = false;
   envelope.error = { code, message, candidates: candidates.map(publicCredit) };
   return { exitCode, envelope };
+}
+
+// src/application/doctor.ts
+async function runDoctor(client) {
+  const envelope = createEnvelope("doctor");
+  envelope.diagnostics.push({
+    name: "app-server",
+    ok: true,
+    message: "The App Server process initialized over JSONL stdio."
+  });
+  const account = await client.readAccount();
+  const accountError = compatibleAccountError(account);
+  envelope.account = publicAccount(account, null, publicAccountFingerprint(account));
+  envelope.diagnostics.push({
+    name: "account",
+    ok: accountError == null,
+    message: accountError ?? `Compatible Codex account type: ${String(account.type)}.`
+  });
+  if (accountError != null) {
+    return fail(envelope, EXIT_CODE.authentication, "incompatible-account", accountError);
+  }
+  const snapshot = await client.readRateLimits();
+  const accountWithPlan = { ...account, planType: account.planType ?? getPlanType(snapshot) };
+  envelope.account = publicAccount(
+    accountWithPlan,
+    getPlanType(snapshot),
+    publicAccountFingerprint(accountWithPlan)
+  );
+  applySnapshot(envelope, snapshot);
+  envelope.diagnostics.push({
+    name: "rate-limits",
+    ok: true,
+    message: "ChatGPT rate limits were read successfully."
+  });
+  envelope.diagnostics.push({
+    name: "reset-credit-details",
+    ok: snapshot.resetCredits.detailsState === "available" || snapshot.resetCredits.detailsState === "empty",
+    message: `Reset-credit detail state: ${snapshot.resetCredits.detailsState}.`
+  });
+  const reportedPlans = getReportedPlanTypes(snapshot);
+  const planInconsistent = reportedPlans.some((plan) => plan !== accountWithPlan.planType);
+  const redemptionError = redemptionAccountError(accountWithPlan) ?? (planInconsistent ? "The account and rate-limit buckets report inconsistent ChatGPT plans." : null);
+  envelope.diagnostics.push({
+    name: "redemption-account",
+    ok: redemptionError == null,
+    message: redemptionError ?? "The account is a known personal ChatGPT plan eligible for preparation."
+  });
+  if (snapshot.resetCredits.detailsState === "partial") {
+    envelope.warnings.push("Precise selection is disabled because the detail list is partial.");
+  } else if (snapshot.resetCredits.detailsState === "unavailable") {
+    envelope.warnings.push(
+      "Precise selection is disabled because individual details are unavailable."
+    );
+  } else if (snapshot.resetCredits.detailsState === "inconsistent") {
+    envelope.warnings.push(
+      "Precise selection is disabled because reset-credit details are inconsistent or unsupported."
+    );
+  }
+  return succeed(envelope);
 }
 
 // src/application/list.ts
@@ -16737,7 +16951,7 @@ function verifyRedemption(attempt, after, observedAt = Date.now()) {
 }
 
 // src/application/redemption-intent.ts
-import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
 function sortedWindows(snapshot) {
   const windows = [];
   for (const [bucketId, bucket] of getRateLimitBuckets(snapshot)) {
@@ -16781,7 +16995,7 @@ function safetySnapshotDigest(fingerprint, snapshot) {
       byLimitId: Object.entries(snapshot.rateLimitsByLimitId).sort(([left], [right]) => left.localeCompare(right)).map(([id, bucket]) => [id, canonicalBucket(bucket)])
     }
   });
-  return createHash2("sha256").update(canonical, "utf8").digest("hex");
+  return createHash3("sha256").update(canonical, "utf8").digest("hex");
 }
 function canonicalBucket(bucket) {
   if (bucket == null) {
@@ -17593,7 +17807,7 @@ function renderSnapshot(snapshot, timeZone) {
     `Reset credits: ${snapshot.resetCredits.availableCount} (${snapshot.resetCredits.detailsState})`
   ];
   for (const credit of snapshot.resetCredits.credits) {
-    lines.push(`  - ${safeTerminalField(credit.id)}`);
+    lines.push(`  - ${formatCreditId(credit.id)}`);
     lines.push(`    status: ${safeTerminalField(credit.status)}`);
     lines.push(`    type: ${safeTerminalField(credit.resetType ?? "unknown")}`);
     lines.push(`    expires: ${formatTimestamp(credit.expiresAt, timeZone)}`);
@@ -17649,7 +17863,7 @@ function renderTerminal(envelope, timeZone) {
     lines.push(
       `Selector: ${safeTerminalField(JSON.stringify(envelope.redemption.requestedSelector))}`
     );
-    lines.push(`Credit ID: ${safeTerminalField(envelope.redemption.creditId)}`);
+    lines.push(`Credit ID: ${formatCreditId(envelope.redemption.creditId)}`);
     lines.push(
       `Credit expires: ${formatTimestamp(
         envelope.redemption.selectedCredit.expiresAt,
@@ -17691,7 +17905,7 @@ function renderTerminal(envelope, timeZone) {
       `Error [${safeTerminalField(envelope.error.code)}]: ${safeTerminalField(envelope.error.message, 1024)}`
     );
     for (const candidate of envelope.error.candidates) {
-      lines.push(`  candidate: ${safeTerminalField(candidate.id)}`);
+      lines.push(`  candidate: ${formatCreditId(candidate.id)}`);
     }
   }
   return redactText(lines.join("\n"));
@@ -17701,8 +17915,9 @@ function renderTerminal(envelope, timeZone) {
 var VERSION = "0.1.0";
 var UUID_PATTERN2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 var HASH_PREFIX_PATTERN = /^[0-9a-f]{16}$/i;
-var MAX_CREDIT_ID_LENGTH = 4096;
+var MAX_CREDIT_ID_LENGTH = 1024;
 var RESET_MCP_TOOL_NAMES = [
+  "check_remote_reset_setup",
   "list_reset_credits",
   "prepare_reset_redemption",
   "get_redemption_attempt",
@@ -17738,6 +17953,27 @@ var approvalBindingProperties = {
   }
 };
 var RESET_MCP_TOOLS = [
+  {
+    name: "check_remote_reset_setup",
+    title: "Check Codex Remote reset setup",
+    description: "Read-only preflight for the connected host, account, reset-credit details, negotiated MCP protocol, and required in-client form confirmation. This never prepares or consumes a credit.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        time_zone: {
+          type: "string",
+          description: "IANA time zone used only to format any returned timestamps."
+        }
+      },
+      additionalProperties: false
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+      idempotentHint: true
+    }
+  },
   {
     name: "list_reset_credits",
     title: "List Codex reset credits",
@@ -18022,7 +18258,7 @@ function bindingFailure(command, attempt) {
 }
 function confirmationMessage(attempt, kind) {
   const fingerprint = attempt.accountFingerprint.slice(0, 16);
-  const creditId = safeTerminalField(attempt.target.id, 512);
+  const creditId = formatCreditId(attempt.target.id);
   const expiration = formatTimestamp(attempt.target.expiresAt, attempt.timeZone);
   if (kind === "close-unknown") {
     const challenge2 = `CLOSE UNKNOWN ${attempt.attemptId.slice(0, 8).toUpperCase()}`;
@@ -18073,9 +18309,21 @@ var ResetMcpToolService = class {
   #now;
   #verificationDelaysMs;
   #sleep;
+  #inspectStateDirectory;
   constructor(dependencies = {}) {
     const environment = dependencies.environment ?? process.env;
-    this.#store = dependencies.store ?? new FileRedemptionAttemptStore(defaultAttemptStateDirectory(environment));
+    if (dependencies.store == null) {
+      const stateDirectory = defaultAttemptStateDirectory(environment);
+      this.#store = new FileRedemptionAttemptStore(stateDirectory);
+      this.#inspectStateDirectory = dependencies.inspectStateDirectory ?? (() => inspectAttemptStateDirectory(stateDirectory));
+    } else {
+      this.#store = dependencies.store;
+      this.#inspectStateDirectory = dependencies.inspectStateDirectory ?? (async () => ({
+        ready: true,
+        state: "injected",
+        message: "The injected journal store is available to this process."
+      }));
+    }
     this.#now = dependencies.now ?? Date.now;
     this.#verificationDelaysMs = dependencies.verificationDelaysMs;
     this.#sleep = dependencies.sleep;
@@ -18096,6 +18344,9 @@ var ResetMcpToolService = class {
     try {
       if (name === "get_redemption_attempt") {
         return await this.#getAttempt(attemptInputSchema.parse(rawInput));
+      }
+      if (name === "check_remote_reset_setup") {
+        return await this.#checkRemoteSetup(listInputSchema.parse(rawInput), context);
       }
       if (name === "list_reset_credits") {
         return await this.#list(listInputSchema.parse(rawInput));
@@ -18127,6 +18378,62 @@ var ResetMcpToolService = class {
         timeZone
       });
     }
+  }
+  async #checkRemoteSetup(input, context) {
+    const timeZone = input.time_zone ?? defaultTimeZone();
+    const [doctorResult, journalResult] = await Promise.allSettled([
+      this.#withClient((client) => runDoctor(client)),
+      this.#inspectStateDirectory()
+    ]);
+    const execution = doctorResult.status === "fulfilled" ? doctorResult.value : applicationFailure("doctor", doctorResult.reason);
+    const journal = journalResult.status === "fulfilled" ? journalResult.value : {
+      ready: false,
+      state: "invalid",
+      message: redactText(
+        journalResult.reason instanceof Error ? journalResult.reason.message : String(journalResult.reason)
+      )
+    };
+    const requiredDiagnostics = [
+      "app-server",
+      "account",
+      "rate-limits",
+      "reset-credit-details",
+      "redemption-account"
+    ];
+    const checks = Object.fromEntries(
+      requiredDiagnostics.map((name) => [
+        name,
+        execution.envelope.diagnostics.find((diagnostic) => diagnostic.name === name)?.ok === true
+      ])
+    );
+    checks["journal-state"] = journal.ready;
+    const hostReady = requiredDiagnostics.every((name) => checks[name]) && journal.ready;
+    const formElicitation = context.clientCapabilities.formElicitation;
+    const ready = execution.exitCode === EXIT_CODE.success && hostReady && formElicitation;
+    const readiness = {
+      ready,
+      hostReady,
+      protocolVersion: context.clientCapabilities.protocolVersion,
+      formElicitation,
+      checks,
+      journal
+    };
+    const result = executionResult("check_remote_reset_setup", execution, timeZone, {
+      timeZone,
+      readiness
+    });
+    result.content[0] = {
+      type: "text",
+      text: [
+        `Remote reset setup: ${ready ? "READY" : "NOT READY"}`,
+        `MCP protocol: ${safeTerminalField(context.clientCapabilities.protocolVersion ?? "unavailable")}`,
+        `Bound confirmation form: ${formElicitation ? "available" : "unavailable"}`,
+        `Local journal: ${journal.ready ? "available" : "unavailable"} (${safeTerminalField(journal.message, 1024)})`,
+        executionText(remoteEnvelope(execution), timeZone),
+        "This check was read-only. No reset attempt was prepared and no credit was consumed."
+      ].join("\n")
+    };
+    return result;
   }
   async #prepare(input) {
     const timeZone = input.time_zone ?? defaultTimeZone();
@@ -18173,7 +18480,7 @@ var ResetMcpToolService = class {
               `Attempt: ${attempt.attemptId}`,
               `State: ${attempt.state}`,
               `Account fingerprint: ${attempt.accountFingerprint.slice(0, 16)}`,
-              `Credit ID: ${safeTerminalField(attempt.target.id)}`,
+              `Credit ID: ${formatCreditId(attempt.target.id)}`,
               `Expires: ${formatTimestamp(attempt.target.expiresAt, attempt.timeZone)}`,
               `Next action: ${String(view.nextAction)}`,
               "No consume request was sent and the journal was not changed."
@@ -18524,7 +18831,7 @@ var ResetMcpStdioServer = class {
       protocolVersion,
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-      instructions: "Inspection never consumes a credit. Prepare first, then use only the exact returned approval binding. Redemption and recovery require host approval plus an in-client attempt-specific confirmation."
+      instructions: "Run the read-only setup check before relying on phone access. Inspection never consumes a credit. Prepare first, then use only the exact returned approval binding. Redemption and recovery require host approval plus an in-client attempt-specific confirmation."
     });
   }
   async #callTool(request) {
@@ -18583,6 +18890,10 @@ var ResetMcpStdioServer = class {
     try {
       const result = await this.#tools.call(name, args, {
         signal: controller.signal,
+        clientCapabilities: {
+          protocolVersion: this.#negotiatedProtocolVersion,
+          formElicitation: this.#clientSupportsFormElicitation
+        },
         requestConfirmation: (confirmation) => this.#requestConfirmation(confirmation, controller.signal)
       });
       this.#respond(request.id, result);

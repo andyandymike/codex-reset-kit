@@ -20,7 +20,7 @@
     "capabilities": ["Read", "Write"],
     "websiteURL": "https://andyandymike.github.io/codex-reset-kit/",
     "defaultPrompt": [
-      "Use $redeem-codex-reset to show my available Codex reset credits.",
+      "Use $redeem-codex-reset to check whether this computer is ready for a phone Remote reset.",
       "Use $redeem-codex-reset to use the credit expiring on this date.",
       "Use $redeem-codex-reset to recover my last uncertain reset attempt."
     ]
