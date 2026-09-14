@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "cross-spawn": "7.0.6",
-    "zod": "4.4.3"
+    "zod": "4.6.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.6",
